@@ -1,0 +1,15 @@
+# Python / Django
+venv/
+__pycache__/
+*.py[cod]
+db.sqlite3
+.env
+
+# Node / Vue
+node_modules/
+dist/
+.DS_Store
+
+# Mac / Windows
+.DS_Store
+Thumbs.db
