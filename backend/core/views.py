@@ -1,3 +1,373 @@
-from django.shortcuts import render
+"""
+Vistas (ViewSets) para la API REST del Sistema de Control de Activos (SCA) Hospital.
 
-# Create your views here.
+Este módulo define los ViewSets de Django REST Framework que exponen
+los endpoints de la API.
+
+Características:
+- Autenticación JWT requerida en todos los endpoints (IsAuthenticated)
+- Documentación automática con drf-spectacular (@extend_schema_view)
+- Optimización SQL con select_related() para evitar N+1 queries
+- CRUD completo para todos los modelos (excepto AuditoriaLog que es read-only)
+- Tags organizados para OpenAPI: Maestros, Core, Trazabilidad, Auditoría
+"""
+
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
+from .models import (
+    Rol,
+    Usuario,
+    Departamento,
+    Ubicacion,
+    TipoEquipo,
+    EstadoActivo,
+    Activo,
+    HistorialMovimiento,
+    AuditoriaLog
+)
+
+from .serializers import (
+    RolSerializer,
+    UsuarioSerializer,
+    DepartamentoSerializer,
+    UbicacionSerializer,
+    TipoEquipoSerializer,
+    EstadoActivoSerializer,
+    ActivoSerializer,
+    HistorialMovimientoSerializer,
+    AuditoriaLogSerializer
+)
+
+
+# ==============================================================================
+# VIEWSETS BÁSICOS (MAESTROS)
+# ==============================================================================
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar todos los roles", tags=["Maestros"]),
+    retrieve=extend_schema(summary="Obtener un rol específico", tags=["Maestros"]),
+    create=extend_schema(summary="Crear un nuevo rol", tags=["Maestros"]),
+    update=extend_schema(summary="Actualizar un rol completo", tags=["Maestros"]),
+    partial_update=extend_schema(summary="Actualizar parcialmente un rol", tags=["Maestros"]),
+    destroy=extend_schema(summary="Eliminar un rol", tags=["Maestros"])
+)
+class RolViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Roles de usuario.
+
+    Endpoints:
+    - GET /api/roles/ - Listar todos los roles
+    - POST /api/roles/ - Crear un nuevo rol
+    - GET /api/roles/{id}/ - Obtener un rol específico
+    - PUT /api/roles/{id}/ - Actualizar un rol completo
+    - PATCH /api/roles/{id}/ - Actualizar parcialmente un rol
+    - DELETE /api/roles/{id}/ - Eliminar un rol
+    """
+    queryset = Rol.objects.all()
+    serializer_class = RolSerializer
+    permission_classes = [IsAuthenticated]
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar todos los departamentos", tags=["Maestros"]),
+    retrieve=extend_schema(summary="Obtener un departamento específico", tags=["Maestros"]),
+    create=extend_schema(summary="Crear un nuevo departamento", tags=["Maestros"]),
+    update=extend_schema(summary="Actualizar un departamento completo", tags=["Maestros"]),
+    partial_update=extend_schema(summary="Actualizar parcialmente un departamento", tags=["Maestros"]),
+    destroy=extend_schema(summary="Eliminar un departamento", tags=["Maestros"])
+)
+class DepartamentoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Departamentos del hospital.
+
+    Endpoints:
+    - GET /api/departamentos/ - Listar todos los departamentos
+    - POST /api/departamentos/ - Crear un nuevo departamento
+    - GET /api/departamentos/{id}/ - Obtener un departamento específico
+    - PUT /api/departamentos/{id}/ - Actualizar un departamento completo
+    - PATCH /api/departamentos/{id}/ - Actualizar parcialmente un departamento
+    - DELETE /api/departamentos/{id}/ - Eliminar un departamento
+    """
+    queryset = Departamento.objects.all()
+    serializer_class = DepartamentoSerializer
+    permission_classes = [IsAuthenticated]
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar todos los tipos de equipo", tags=["Maestros"]),
+    retrieve=extend_schema(summary="Obtener un tipo de equipo específico", tags=["Maestros"]),
+    create=extend_schema(summary="Crear un nuevo tipo de equipo", tags=["Maestros"]),
+    update=extend_schema(summary="Actualizar un tipo de equipo completo", tags=["Maestros"]),
+    partial_update=extend_schema(summary="Actualizar parcialmente un tipo de equipo", tags=["Maestros"]),
+    destroy=extend_schema(summary="Eliminar un tipo de equipo", tags=["Maestros"])
+)
+class TipoEquipoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Tipos de Equipo.
+
+    Endpoints:
+    - GET /api/tipos-equipo/ - Listar todos los tipos de equipo
+    - POST /api/tipos-equipo/ - Crear un nuevo tipo de equipo
+    - GET /api/tipos-equipo/{id}/ - Obtener un tipo de equipo específico
+    - PUT /api/tipos-equipo/{id}/ - Actualizar un tipo de equipo completo
+    - PATCH /api/tipos-equipo/{id}/ - Actualizar parcialmente un tipo de equipo
+    - DELETE /api/tipos-equipo/{id}/ - Eliminar un tipo de equipo
+    """
+    queryset = TipoEquipo.objects.all()
+    serializer_class = TipoEquipoSerializer
+    permission_classes = [IsAuthenticated]
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar todos los estados de activo", tags=["Maestros"]),
+    retrieve=extend_schema(summary="Obtener un estado de activo específico", tags=["Maestros"]),
+    create=extend_schema(summary="Crear un nuevo estado de activo", tags=["Maestros"]),
+    update=extend_schema(summary="Actualizar un estado de activo completo", tags=["Maestros"]),
+    partial_update=extend_schema(summary="Actualizar parcialmente un estado de activo", tags=["Maestros"]),
+    destroy=extend_schema(summary="Eliminar un estado de activo", tags=["Maestros"])
+)
+class EstadoActivoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Estados de Activo.
+
+    Endpoints:
+    - GET /api/estados-activo/ - Listar todos los estados de activo
+    - POST /api/estados-activo/ - Crear un nuevo estado de activo
+    - GET /api/estados-activo/{id}/ - Obtener un estado de activo específico
+    - PUT /api/estados-activo/{id}/ - Actualizar un estado de activo completo
+    - PATCH /api/estados-activo/{id}/ - Actualizar parcialmente un estado de activo
+    - DELETE /api/estados-activo/{id}/ - Eliminar un estado de activo
+    """
+    queryset = EstadoActivo.objects.all()
+    serializer_class = EstadoActivoSerializer
+    permission_classes = [IsAuthenticated]
+
+
+
+# ==============================================================================
+# VIEWSETS CON RELACIONES
+# ==============================================================================
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar todas las ubicaciones", tags=["Core"]),
+    retrieve=extend_schema(summary="Obtener una ubicación específica", tags=["Core"]),
+    create=extend_schema(summary="Crear una nueva ubicación", tags=["Core"]),
+    update=extend_schema(summary="Actualizar una ubicación completa", tags=["Core"]),
+    partial_update=extend_schema(summary="Actualizar parcialmente una ubicación", tags=["Core"]),
+    destroy=extend_schema(summary="Eliminar una ubicación", tags=["Core"])
+)
+class UbicacionViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Ubicaciones.
+
+    OPTIMIZACIÓN: Usa select_related('departamento') para evitar N+1 queries.
+
+    Endpoints:
+    - GET /api/ubicaciones/ - Listar todas las ubicaciones
+    - POST /api/ubicaciones/ - Crear una nueva ubicación
+    - GET /api/ubicaciones/{id}/ - Obtener una ubicación específica
+    - PUT /api/ubicaciones/{id}/ - Actualizar una ubicación completa
+    - PATCH /api/ubicaciones/{id}/ - Actualizar parcialmente una ubicación
+    - DELETE /api/ubicaciones/{id}/ - Eliminar una ubicación
+    """
+    queryset = Ubicacion.objects.select_related('departamento').all()
+    serializer_class = UbicacionSerializer
+    permission_classes = [IsAuthenticated]
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar todos los usuarios", tags=["Core"]),
+    retrieve=extend_schema(summary="Obtener un usuario específico", tags=["Core"]),
+    create=extend_schema(summary="Crear un nuevo usuario", tags=["Core"]),
+    update=extend_schema(summary="Actualizar un usuario completo", tags=["Core"]),
+    partial_update=extend_schema(summary="Actualizar parcialmente un usuario", tags=["Core"]),
+    destroy=extend_schema(summary="Eliminar un usuario", tags=["Core"])
+)
+class UsuarioViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Usuarios.
+
+    OPTIMIZACIÓN: Usa select_related('rol') para evitar N+1 queries.
+
+    SEGURIDAD: El password se maneja de forma segura (write_only en serializer).
+
+    Endpoints:
+    - GET /api/usuarios/ - Listar todos los usuarios
+    - POST /api/usuarios/ - Crear un nuevo usuario
+    - GET /api/usuarios/{id}/ - Obtener un usuario específico
+    - PUT /api/usuarios/{id}/ - Actualizar un usuario completo
+    - PATCH /api/usuarios/{id}/ - Actualizar parcialmente un usuario
+    - DELETE /api/usuarios/{id}/ - Eliminar un usuario
+    """
+    queryset = Usuario.objects.select_related('rol').all()
+    serializer_class = UsuarioSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ==============================================================================
+# VIEWSET DE ACTIVOS (CRÍTICO)
+# ==============================================================================
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Listar todos los activos",
+        description="Obtiene el listado completo de activos con información anidada de tipo, estado y ubicación",
+        tags=["Core"]
+    ),
+    retrieve=extend_schema(
+        summary="Obtener un activo específico",
+        description="Obtiene los detalles completos de un activo incluyendo tipo, estado y ubicación con departamento",
+        tags=["Core"]
+    ),
+    create=extend_schema(
+        summary="Crear un nuevo activo",
+        description="Registra un nuevo activo en el sistema de inventario",
+        tags=["Core"]
+    ),
+    update=extend_schema(
+        summary="Actualizar un activo completo",
+        description="Actualiza todos los campos de un activo existente",
+        tags=["Core"]
+    ),
+    partial_update=extend_schema(
+        summary="Actualizar parcialmente un activo",
+        description="Actualiza uno o más campos de un activo existente",
+        tags=["Core"]
+    ),
+    destroy=extend_schema(
+        summary="Eliminar un activo",
+        description="Elimina un activo del sistema (requiere que no tenga historial asociado)",
+        tags=["Core"]
+    )
+)
+class ActivoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Activos (ENTIDAD CENTRAL DEL SISTEMA).
+
+    OPTIMIZACIÓN CRÍTICA:
+    - Usa select_related() para cargar tipo, estado, ubicacion_actual y departamento
+      en una sola query SQL (evita el problema N+1 queries).
+    - Sin esta optimización, listar 100 activos generaría 301 queries SQL.
+    - Con esta optimización, listar 100 activos genera solo 1 query SQL.
+
+    RESPUESTA:
+    - Los objetos relacionados (tipo, estado, ubicacion_actual) se devuelven
+      completos gracias al método to_representation() del serializer.
+
+    Endpoints:
+    - GET /api/activos/ - Listar todos los activos con información completa
+    - POST /api/activos/ - Crear un nuevo activo
+    - GET /api/activos/{id}/ - Obtener un activo específico
+    - PUT /api/activos/{id}/ - Actualizar un activo completo
+    - PATCH /api/activos/{id}/ - Actualizar parcialmente un activo
+    - DELETE /api/activos/{id}/ - Eliminar un activo
+    """
+    queryset = Activo.objects.select_related(
+        'tipo',
+        'estado',
+        'ubicacion_actual',
+        'ubicacion_actual__departamento'
+    ).all()
+    serializer_class = ActivoSerializer
+    permission_classes = [IsAuthenticated]
+
+
+# ==============================================================================
+# VIEWSETS DE TRAZABILIDAD Y AUDITORÍA
+# ==============================================================================
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Listar historial de movimientos",
+        description="Obtiene el historial completo de movimientos de activos con trazabilidad",
+        tags=["Trazabilidad"]
+    ),
+    retrieve=extend_schema(
+        summary="Obtener un movimiento específico",
+        description="Obtiene los detalles completos de un movimiento de activo",
+        tags=["Trazabilidad"]
+    ),
+    create=extend_schema(
+        summary="Registrar un nuevo movimiento",
+        description="Registra un movimiento de activo entre ubicaciones",
+        tags=["Trazabilidad"]
+    ),
+    update=extend_schema(
+        summary="Actualizar un movimiento completo",
+        description="Actualiza todos los campos de un movimiento existente",
+        tags=["Trazabilidad"]
+    ),
+    partial_update=extend_schema(
+        summary="Actualizar parcialmente un movimiento",
+        description="Actualiza uno o más campos de un movimiento existente",
+        tags=["Trazabilidad"]
+    ),
+    destroy=extend_schema(
+        summary="Eliminar un movimiento",
+        description="Elimina un registro de movimiento del historial",
+        tags=["Trazabilidad"]
+    )
+)
+class HistorialMovimientoViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de Historial de Movimientos.
+
+    OPTIMIZACIÓN:
+    - Usa select_related() para cargar todas las relaciones en una sola query.
+
+    TRAZABILIDAD:
+    - Cada movimiento registra activo, usuario, ubicaciones origen/destino.
+
+    Endpoints:
+    - GET /api/historial-movimientos/ - Listar todos los movimientos
+    - POST /api/historial-movimientos/ - Registrar un nuevo movimiento
+    - GET /api/historial-movimientos/{id}/ - Obtener un movimiento específico
+    - PUT /api/historial-movimientos/{id}/ - Actualizar un movimiento completo
+    - PATCH /api/historial-movimientos/{id}/ - Actualizar parcialmente un movimiento
+    - DELETE /api/historial-movimientos/{id}/ - Eliminar un movimiento
+    """
+    queryset = HistorialMovimiento.objects.select_related(
+        'activo',
+        'usuario_registra',
+        'ubicacion_origen',
+        'ubicacion_origen__departamento',
+        'ubicacion_destino',
+        'ubicacion_destino__departamento'
+    ).all()
+    serializer_class = HistorialMovimientoSerializer
+    permission_classes = [IsAuthenticated]
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="Listar logs de auditoría",
+        description="Obtiene el historial completo de acciones del sistema",
+        tags=["Auditoría"]
+    ),
+    retrieve=extend_schema(
+        summary="Obtener un log específico",
+        description="Obtiene los detalles completos de un log de auditoría",
+        tags=["Auditoría"]
+    )
+)
+class AuditoriaLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet para consulta de Logs de Auditoría (SOLO LECTURA).
+
+    IMPORTANTE:
+    - Este ViewSet es ReadOnlyModelViewSet (solo GET).
+    - Los logs de auditoría no se crean, modifican ni eliminan manualmente.
+    - Se crean automáticamente mediante el método AuditoriaLog.registrar_accion().
+
+    OPTIMIZACIÓN:
+    - Usa select_related('usuario') para evitar N+1 queries.
+
+    Endpoints:
+    - GET /api/auditoria-logs/ - Listar todos los logs de auditoría
+    - GET /api/auditoria-logs/{id}/ - Obtener un log específico
+    """
+    queryset = AuditoriaLog.objects.select_related('usuario').all()
+    serializer_class = AuditoriaLogSerializer
+    permission_classes = [IsAuthenticated]

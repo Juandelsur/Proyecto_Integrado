@@ -10,7 +10,6 @@ Incluye rutas para:
 
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -21,16 +20,6 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
-from api.views import ActivoViewSet, UbicacionViewSet
-
-# ==============================================================================
-# ROUTER CONFIGURATION
-# ==============================================================================
-
-# El Router crea las URLs automáticamente para los ViewSets
-router = DefaultRouter()
-router.register(r'activos', ActivoViewSet, basename='activo')
-router.register(r'ubicaciones', UbicacionViewSet, basename='ubicacion')
 
 # ==============================================================================
 # URL PATTERNS
@@ -40,8 +29,8 @@ urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
-    # API REST
-    path('api/', include(router.urls)),
+    # API REST - Core (Sistema de Control de Activos)
+    path('api/', include('core.urls')),
 
     # JWT Authentication
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
