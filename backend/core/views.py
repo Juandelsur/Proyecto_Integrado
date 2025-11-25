@@ -12,9 +12,13 @@ Características:
 - Tags organizados para OpenAPI: Maestros, Core, Trazabilidad, Auditoría
 """
 
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, extend_schema_view
+from django.db import transaction
+from django.core.exceptions import ValidationError
 
 from .models import (
     Rol,
@@ -37,7 +41,8 @@ from .serializers import (
     EstadoActivoSerializer,
     ActivoSerializer,
     HistorialMovimientoSerializer,
-    AuditoriaLogSerializer
+    AuditoriaLogSerializer,
+    MovilizacionInputSerializer
 )
 
 
@@ -272,6 +277,219 @@ class ActivoViewSet(viewsets.ModelViewSet):
     ).all()
     serializer_class = ActivoSerializer
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=MovilizacionInputSerializer,
+        responses={
+            200: {"description": "Activo movilizado con éxito"},
+            400: {"description": "Error de validación o ubicación no encontrada"},
+            404: {"description": "Activo no encontrado"}
+        },
+        description="""
+        Moviliza un activo a una nueva ubicación (Historia de Usuario HU2).
+
+        OPERACIÓN TRANSACCIONAL (ACID):
+        Esta operación es atómica. Si alguna parte falla, toda la operación se revierte.
+
+        PASOS EJECUTADOS:
+        1. Valida que la ubicación destino exista
+        2. Actualiza la ubicación actual del activo
+        3. Registra el movimiento en el historial (trazabilidad)
+        4. Crea un log de auditoría en PostgreSQL (seguridad)
+
+        EJEMPLO DE REQUEST:
+        ```json
+        {
+            "id_ubicacion_destino": 5,
+            "notas": "Traslado por mantenimiento preventivo"
+        }
+        ```
+        """,
+        tags=["Core"]
+    )
+    @action(detail=True, methods=['post'], url_path='movilizar')
+    def movilizar(self, request, pk=None):
+        """
+        Acción personalizada para movilizar un activo entre ubicaciones.
+
+        IMPLEMENTACIÓN DE HU2: Movilización de Activos
+
+        Esta acción implementa la lógica de negocio crítica para mover activos
+        entre ubicaciones, garantizando:
+        - Transaccionalidad ACID (todo o nada)
+        - Trazabilidad completa (historial de movimientos)
+        - Auditoría de seguridad (logs en PostgreSQL)
+
+        Args:
+            request: Request HTTP con los datos de movilización
+            pk: ID del activo a movilizar
+
+        Returns:
+            Response: 200 OK si la movilización fue exitosa
+            Response: 400 Bad Request si hay errores de validación
+            Response: 404 Not Found si el activo no existe
+
+        Raises:
+            ValidationError: Si la ubicación destino no existe
+            Exception: Si ocurre algún error durante la transacción
+        """
+
+        # ======================================================================
+        # PASO 1: VALIDACIÓN DE ENTRADA
+        # ======================================================================
+
+        # Validar los datos de entrada usando el serializer
+        input_serializer = MovilizacionInputSerializer(data=request.data)
+
+        if not input_serializer.is_valid():
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'Datos de entrada inválidos',
+                    'errors': input_serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Extraer datos validados
+        id_ubicacion_destino = input_serializer.validated_data['id_ubicacion_destino']
+        notas = input_serializer.validated_data.get('notas', '')
+
+        # ======================================================================
+        # PASO 2: OBTENCIÓN DEL ACTIVO Y VALIDACIONES
+        # ======================================================================
+
+        try:
+            # Obtener el activo (usa el método del ViewSet que maneja 404 automáticamente)
+            activo = self.get_object()
+
+            # Obtener la ubicación destino
+            try:
+                ubicacion_destino = Ubicacion.objects.select_related('departamento').get(
+                    id=id_ubicacion_destino
+                )
+            except Ubicacion.DoesNotExist:
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': f'La ubicación con ID {id_ubicacion_destino} no existe'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Validar que no sea la misma ubicación
+            if activo.ubicacion_actual.id == ubicacion_destino.id:
+                return Response(
+                    {
+                        'status': 'error',
+                        'message': 'El activo ya se encuentra en la ubicación destino'
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Guardar la ubicación origen antes de cambiarla
+            ubicacion_origen = activo.ubicacion_actual
+
+            # ======================================================================
+            # PASO 3: TRANSACCIÓN ATÓMICA (ACID)
+            # ======================================================================
+
+            with transaction.atomic():
+                """
+                TRANSACCIÓN ATÓMICA:
+                Todo lo que ocurra dentro de este bloque se ejecuta como una
+                única operación. Si algo falla, TODA la operación se revierte.
+
+                Esto garantiza:
+                - Atomicidad: Todo o nada
+                - Consistencia: Los datos quedan en estado válido
+                - Aislamiento: Otras transacciones no ven estados intermedios
+                - Durabilidad: Los cambios son permanentes
+                """
+
+                # ----------------------------------------------------------
+                # 3.1: ACTUALIZAR UBICACIÓN DEL ACTIVO
+                # ----------------------------------------------------------
+                activo.ubicacion_actual = ubicacion_destino
+                activo.save()
+
+                # ----------------------------------------------------------
+                # 3.2: REGISTRAR EN HISTORIAL (TRAZABILIDAD)
+                # ----------------------------------------------------------
+                historial = HistorialMovimiento.objects.create(
+                    activo=activo,
+                    usuario_registra=request.user,
+                    ubicacion_origen=ubicacion_origen,
+                    ubicacion_destino=ubicacion_destino,
+                    tipo_movimiento='TRASLADO',  # Tipo de movimiento según HU2
+                    comentarios=notas
+                )
+
+                # ----------------------------------------------------------
+                # 3.3: REGISTRAR EN AUDITORÍA (SEGURIDAD)
+                # ----------------------------------------------------------
+                # Los logs se guardan en PostgreSQL usando JSONField
+                # (NO usamos MongoDB como se especificó en los requisitos)
+                AuditoriaLog.objects.create(
+                    usuario=request.user,
+                    accion='MOVILIZACION_ACTIVO',
+                    detalle_accion={
+                        'activo_id': activo.id,
+                        'activo_codigo': activo.codigo_inventario,
+                        'activo_marca': activo.marca,
+                        'activo_modelo': activo.modelo,
+                        'origen_id': ubicacion_origen.id,
+                        'origen_nombre': ubicacion_origen.nombre_ubicacion,
+                        'origen_departamento': ubicacion_origen.departamento.nombre_departamento,
+                        'destino_id': ubicacion_destino.id,
+                        'destino_nombre': ubicacion_destino.nombre_ubicacion,
+                        'destino_departamento': ubicacion_destino.departamento.nombre_departamento,
+                        'notas': notas,
+                        'historial_id': historial.id
+                    }
+                )
+
+            # ======================================================================
+            # PASO 4: RESPUESTA EXITOSA
+            # ======================================================================
+
+            return Response(
+                {
+                    'status': 'success',
+                    'message': 'Activo movilizado con éxito',
+                    'data': {
+                        'activo_codigo': activo.codigo_inventario,
+                        'ubicacion_origen': {
+                            'id': ubicacion_origen.id,
+                            'nombre': ubicacion_origen.nombre_ubicacion,
+                            'departamento': ubicacion_origen.departamento.nombre_departamento
+                        },
+                        'ubicacion_destino': {
+                            'id': ubicacion_destino.id,
+                            'nombre': ubicacion_destino.nombre_ubicacion,
+                            'departamento': ubicacion_destino.departamento.nombre_departamento
+                        },
+                        'fecha_movimiento': historial.fecha_movimiento.isoformat(),
+                        'usuario': request.user.username
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            # ======================================================================
+            # MANEJO DE ERRORES
+            # ======================================================================
+
+            # Si ocurre cualquier error, la transacción se revierte automáticamente
+            return Response(
+                {
+                    'status': 'error',
+                    'message': 'Error al movilizar el activo',
+                    'detail': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # ==============================================================================

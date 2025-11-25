@@ -14,6 +14,7 @@ Características:
 """
 
 from rest_framework import serializers
+from django.core.exceptions import ValidationError
 from .models import (
     Rol,
     Usuario,
@@ -528,4 +529,77 @@ class AuditoriaLogSerializer(serializers.ModelSerializer):
             'timestamp'
         ]
         read_only_fields = '__all__'  # Todos los campos son de solo lectura
+
+
+# ==============================================================================
+# SERIALIZERS DE ACCIONES PERSONALIZADAS
+# ==============================================================================
+
+class MovilizacionInputSerializer(serializers.Serializer):
+    """
+    Serializer de entrada para la acción personalizada 'movilizar' de activos.
+
+    Este serializer valida los datos de entrada para la movilización de un activo
+    entre ubicaciones, implementando la Historia de Usuario HU2.
+
+    CONTEXTO DE USO:
+    - Se usa en el endpoint POST /api/activos/{id}/movilizar/
+    - Valida que la ubicación destino exista
+    - Permite agregar notas opcionales sobre el movimiento
+
+    CAMPOS:
+    - id_ubicacion_destino: ID de la ubicación a la que se moverá el activo (requerido)
+    - notas: Comentarios u observaciones sobre el movimiento (opcional)
+
+    VALIDACIÓN:
+    - El id_ubicacion_destino debe ser un entero positivo
+    - Las notas pueden estar vacías o en blanco
+
+    EJEMPLO DE USO:
+    ```json
+    {
+        "id_ubicacion_destino": 5,
+        "notas": "Traslado por mantenimiento preventivo programado"
+    }
+    ```
+
+    RESPUESTA ESPERADA:
+    - 200 OK: Activo movilizado con éxito
+    - 400 Bad Request: Error de validación o ubicación no encontrada
+    - 404 Not Found: Activo no encontrado
+    """
+
+    id_ubicacion_destino = serializers.IntegerField(
+        required=True,
+        min_value=1,
+        help_text="ID de la ubicación destino donde se moverá el activo"
+    )
+
+    notas = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=500,
+        help_text="Comentarios u observaciones sobre el movimiento (opcional)"
+    )
+
+    def validate_id_ubicacion_destino(self, value):
+        """
+        Valida que la ubicación destino exista en la base de datos.
+
+        Args:
+            value (int): ID de la ubicación destino
+
+        Returns:
+            int: El mismo valor si la validación es exitosa
+
+        Raises:
+            ValidationError: Si la ubicación no existe
+        """
+        try:
+            Ubicacion.objects.get(id=value)
+        except Ubicacion.DoesNotExist:
+            raise serializers.ValidationError(
+                f"La ubicación con ID {value} no existe en el sistema"
+            )
+        return value
 
