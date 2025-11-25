@@ -1,15 +1,131 @@
+# ===========================
 # Python / Django
+# ===========================
 venv/
+env/
+ENV/
+.venv/
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
 db.sqlite3
+db.sqlite3-journal
 .env
+.env.local
+*.log
+*.pot
+*.pyc
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.coverage
+.pytest_cache/
+htmlcov/
+.tox/
+.hypothesis/
 
-# Node / Vue
+# ===========================
+# Node / Vue / Frontend
+# ===========================
 node_modules/
 dist/
-.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
 
-# Mac / Windows
+# ===========================
+# IDEs and Editors
+# ===========================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ===========================
+# Operating Systems
+# ===========================
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+
+# ===========================
+# Database
+# ===========================
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# ===========================
+# Media / Static Files (if needed)
+# ===========================
+# media/
+# staticfiles/
+
+# ===========================
+# Docker
+# ===========================
+# docker-compose.override.yml
+
+# ===========================
+# Misc
+# ===========================
+.cache/
+*.bak
+*.tmp
+*.temp
