@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +22,16 @@ load_dotenv(BASE_DIR / '.env')
 # ==============================================================================
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-n@b^!_nh2wp$a2vf!(n=ikhr99yo49$qags2(bntxib=(qs29l')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-n@b^!_nh2wp$a2vf!(n=ikhr99yo49$qags2(bntxib=(qs29l')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Hosts permitidos (Railway, localhost, etc.)
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+# CSRF Trusted Origins (CRÍTICO para Django 4+ en Railway con HTTPS)
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
 
 
 # ==============================================================================
@@ -54,8 +59,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',  # DEBE estar primero
-    'django.middleware.security.SecurityMiddleware',
+    'django.middleware.security.SecurityMiddleware',  # DEBE estar primero
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # INMEDIATAMENTE después de SecurityMiddleware
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -89,16 +95,30 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # ==============================================================================
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'sca_db'),
-        'USER': os.getenv('DB_USER', 'sca_user'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'sca_password'),
-        'HOST': os.getenv('DB_HOST', 'localhost'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+# Configuración dinámica para Railway + NeonTech (PostgreSQL con SSL)
+# Si DATABASE_URL existe (producción), usa dj-database-url
+# Si no existe (desarrollo local), usa configuración manual
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
     }
-}
+else:
+    # Configuración para desarrollo local
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'sca_db'),
+            'USER': os.getenv('DB_USER', 'sca_user'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'sca_password'),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -134,12 +154,15 @@ USE_TZ = True
 
 
 # ==============================================================================
-# STATIC FILES
+# STATIC FILES (Whitenoise para producción)
 # ==============================================================================
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Whitenoise: Compresión y caché de archivos estáticos
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ==============================================================================
 # DEFAULT PRIMARY KEY FIELD TYPE
