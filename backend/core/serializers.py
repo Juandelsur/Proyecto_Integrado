@@ -371,7 +371,8 @@ class ActivoSerializer(serializers.ModelSerializer):
             'estado_id',
             'estado',
             'ubicacion_actual_id',
-            'ubicacion_actual'
+            'ubicacion_actual',
+            'notas'
         ]
         read_only_fields = ['id', 'codigo_inventario', 'fecha_alta', 'tipo', 'estado', 'ubicacion_actual']
 

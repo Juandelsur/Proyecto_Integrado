@@ -142,6 +142,11 @@ class ActivoAdmin(admin.ModelAdmin):
         ('Clasificación', {
             'fields': ('tipo', 'estado', 'ubicacion_actual')
         }),
+        ('Observaciones', {
+            'fields': ('notas',),
+            'description': 'Observaciones generales, comentarios o notas adicionales sobre el activo.',
+            'classes': ('collapse',)  # Sección colapsable para ahorrar espacio
+        }),
         ('Fechas', {
             'fields': ('fecha_alta',)
         }),

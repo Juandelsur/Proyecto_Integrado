@@ -355,6 +355,12 @@ class Activo(models.Model):
         help_text="Ubicación en tiempo real del activo. CRÍTICO para trazabilidad"
     )
 
+    notas = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Observaciones generales, comentarios o notas adicionales sobre el activo"
+    )
+
     class Meta:
         db_table = 'Tbl_Activos'
         verbose_name = 'Activo'
