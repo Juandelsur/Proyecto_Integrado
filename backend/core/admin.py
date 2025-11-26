@@ -64,11 +64,25 @@ class DepartamentoAdmin(admin.ModelAdmin):
 @admin.register(Ubicacion)
 class UbicacionAdmin(admin.ModelAdmin):
     """Administración de Ubicaciones."""
-    list_display = ['nombre_ubicacion', 'departamento', 'id']
+    list_display = ['codigo_qr', 'nombre_ubicacion', 'departamento', 'id']
     list_filter = ['departamento']
-    search_fields = ['nombre_ubicacion']
+    search_fields = ['nombre_ubicacion', 'codigo_qr']
     ordering = ['departamento', 'nombre_ubicacion']
     autocomplete_fields = ['departamento']
+
+    # CRÍTICO: codigo_qr tiene editable=False, por lo que debe estar en readonly_fields
+    # para que sea visible en el formulario del admin
+    readonly_fields = ['codigo_qr']
+
+    fieldsets = (
+        ('Código QR', {
+            'fields': ('codigo_qr',),
+            'description': 'Código QR generado automáticamente. No se puede modificar.'
+        }),
+        ('Información Básica', {
+            'fields': ('nombre_ubicacion', 'departamento')
+        }),
+    )
 
 
 # ==============================================================================
@@ -111,12 +125,19 @@ class ActivoAdmin(admin.ModelAdmin):
     list_filter = ['tipo', 'estado', 'ubicacion_actual__departamento', 'fecha_alta']
     search_fields = ['codigo_inventario', 'numero_serie', 'marca', 'modelo']
     ordering = ['-fecha_alta']
-    readonly_fields = ['fecha_alta']
+
+    # CRÍTICO: codigo_inventario tiene editable=False, por lo que debe estar en readonly_fields
+    # para que sea visible en el formulario del admin
+    readonly_fields = ['codigo_inventario', 'fecha_alta']
     autocomplete_fields = ['tipo', 'estado', 'ubicacion_actual']
 
     fieldsets = (
+        ('Código de Inventario', {
+            'fields': ('codigo_inventario',),
+            'description': 'Código de inventario generado automáticamente en formato INV-{YY}-{HEX}. No se puede modificar.'
+        }),
         ('Información Básica', {
-            'fields': ('codigo_inventario', 'numero_serie', 'marca', 'modelo')
+            'fields': ('numero_serie', 'marca', 'modelo')
         }),
         ('Clasificación', {
             'fields': ('tipo', 'estado', 'ubicacion_actual')
