@@ -294,10 +294,9 @@ class Command(BaseCommand):
         estante_a = Ubicacion.objects.get(nombre_ubicacion='Estante A')
         estante_b = Ubicacion.objects.get(nombre_ubicacion='Estante B')
 
-        # Definir activos a crear
+        # Definir activos a crear (sin codigo_inventario, se genera automáticamente)
         activos_data = [
             {
-                'codigo_inventario': 'INV-001',
                 'numero_serie': 'MON-2024-001',
                 'marca': 'Philips',
                 'modelo': 'IntelliVue MX40',
@@ -306,7 +305,6 @@ class Command(BaseCommand):
                 'ubicacion_actual': box1
             },
             {
-                'codigo_inventario': 'INV-002',
                 'numero_serie': 'MON-2024-002',
                 'marca': 'GE Healthcare',
                 'modelo': 'CARESCAPE B450',
@@ -315,7 +313,6 @@ class Command(BaseCommand):
                 'ubicacion_actual': box2
             },
             {
-                'codigo_inventario': 'INV-003',
                 'numero_serie': 'DEF-2024-001',
                 'marca': 'Zoll',
                 'modelo': 'AED Plus',
@@ -324,7 +321,6 @@ class Command(BaseCommand):
                 'ubicacion_actual': box1
             },
             {
-                'codigo_inventario': 'INV-004',
                 'numero_serie': 'CAM-2024-001',
                 'marca': 'Stryker',
                 'modelo': 'Prime Series',
@@ -333,7 +329,6 @@ class Command(BaseCommand):
                 'ubicacion_actual': estante_a
             },
             {
-                'codigo_inventario': 'INV-005',
                 'numero_serie': 'CAM-2024-002',
                 'marca': 'Hill-Rom',
                 'modelo': 'Advanta 2',
@@ -345,14 +340,15 @@ class Command(BaseCommand):
 
         # Crear activos
         for activo_data in activos_data:
+            # Usar numero_serie como identificador único para get_or_create
             activo, created = Activo.objects.get_or_create(
-                codigo_inventario=activo_data['codigo_inventario'],
+                numero_serie=activo_data['numero_serie'],
                 defaults=activo_data
             )
             if created:
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'   ✓ Activo "{activo_data["codigo_inventario"]}" '
+                        f'   ✓ Activo "{activo.codigo_inventario}" '
                         f'({activo_data["marca"]} {activo_data["modelo"]}) creado'
                     )
                 )

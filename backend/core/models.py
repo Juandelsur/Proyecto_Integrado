@@ -9,10 +9,13 @@ Características:
 - Integridad referencial con PROTECT
 - Documentación automática para OpenAPI/Swagger
 - JSONField para auditoría (reemplazo de MongoDB)
+- Generación automática de códigos únicos con manejo de colisiones
 """
 
-from django.db import models
+from django.db import models, IntegrityError
 from django.contrib.auth.models import AbstractUser
+import secrets
+from datetime import datetime
 
 
 # ==============================================================================
@@ -132,11 +135,25 @@ class Ubicacion(models.Model):
     - Sala 101
     - Box 3
     - Oficina Administración
+
+    Características:
+    - Código QR único generado automáticamente (LOC-{HEX})
+    - Manejo de colisiones en generación de códigos
     """
 
     nombre_ubicacion = models.CharField(
         max_length=100,
         help_text="Nombre de la ubicación específica (ej: Sala 101, Box 3)"
+    )
+
+    codigo_qr = models.CharField(
+        max_length=20,
+        unique=True,
+        editable=False,
+        db_index=True,
+        null=True,
+        blank=True,
+        help_text="Código QR único para identificar la ubicación (ej: LOC-F8A1B2). Generado automáticamente."
     )
 
     departamento = models.ForeignKey(
@@ -156,6 +173,48 @@ class Ubicacion(models.Model):
 
     def __str__(self):
         return f"{self.nombre_ubicacion} ({self.departamento.nombre_departamento})"
+
+    def _generar_codigo_qr(self):
+        """
+        Genera un código QR único en formato LOC-{HEX}.
+
+        Formato: LOC-F8A1B2 (6 caracteres hexadecimales)
+
+        Returns:
+            str: Código QR único
+        """
+        hex_code = secrets.token_hex(3).upper()  # 3 bytes = 6 caracteres hex
+        return f"LOC-{hex_code}"
+
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribe el método save para generar automáticamente el código QR.
+
+        CRÍTICO: Implementa manejo de colisiones con bucle while.
+        Si el código ya existe, genera uno nuevo hasta encontrar uno único.
+        """
+        if not self.codigo_qr:
+            # Intentar generar código único con manejo de colisiones
+            max_intentos = 100
+            intentos = 0
+
+            while intentos < max_intentos:
+                codigo_candidato = self._generar_codigo_qr()
+
+                # Verificar si el código ya existe
+                if not Ubicacion.objects.filter(codigo_qr=codigo_candidato).exists():
+                    self.codigo_qr = codigo_candidato
+                    break
+
+                intentos += 1
+
+            if not self.codigo_qr:
+                raise ValueError(
+                    f"No se pudo generar un código QR único después de {max_intentos} intentos. "
+                    "Esto es extremadamente raro. Contacte al administrador del sistema."
+                )
+
+        super().save(*args, **kwargs)
 
 
 # ==============================================================================
@@ -232,17 +291,21 @@ class Activo(models.Model):
     Tabla: Tbl_Activos
 
     Características:
-    - Código de inventario único
+    - Código de inventario único generado automáticamente (INV-{YY}-{HEX})
     - Número de serie único
     - Relaciones con tipo, estado y ubicación usando db_column
     - Trazabilidad completa de movimientos
+    - Manejo de colisiones en generación de códigos
     """
 
     codigo_inventario = models.CharField(
-        max_length=50,
+        max_length=20,
         unique=True,
+        editable=False,
         db_index=True,
-        help_text="Código único de inventario del activo (ej: ACT-2024-001)"
+        null=True,
+        blank=True,
+        help_text="Código único de inventario del activo (ej: INV-25-A1B2C3). Generado automáticamente."
     )
 
     numero_serie = models.CharField(
@@ -309,6 +372,49 @@ class Activo(models.Model):
     def get_ubicacion_completa(self):
         """Retorna la ubicación completa del activo incluyendo departamento."""
         return f"{self.ubicacion_actual.nombre_ubicacion} ({self.ubicacion_actual.departamento.nombre_departamento})"
+
+    def _generar_codigo_inventario(self):
+        """
+        Genera un código de inventario único en formato INV-{YY}-{HEX}.
+
+        Formato: INV-25-A1B2C3 (año de 2 dígitos + 6 caracteres hexadecimales)
+
+        Returns:
+            str: Código de inventario único
+        """
+        year = datetime.now().strftime('%y')  # Año en 2 dígitos (ej: 25)
+        hex_code = secrets.token_hex(3).upper()  # 3 bytes = 6 caracteres hex
+        return f"INV-{year}-{hex_code}"
+
+    def save(self, *args, **kwargs):
+        """
+        Sobrescribe el método save para generar automáticamente el código de inventario.
+
+        CRÍTICO: Implementa manejo de colisiones con bucle while.
+        Si el código ya existe, genera uno nuevo hasta encontrar uno único.
+        """
+        if not self.codigo_inventario:
+            # Intentar generar código único con manejo de colisiones
+            max_intentos = 100
+            intentos = 0
+
+            while intentos < max_intentos:
+                codigo_candidato = self._generar_codigo_inventario()
+
+                # Verificar si el código ya existe
+                if not Activo.objects.filter(codigo_inventario=codigo_candidato).exists():
+                    self.codigo_inventario = codigo_candidato
+                    break
+
+                intentos += 1
+
+            if not self.codigo_inventario:
+                raise ValueError(
+                    f"No se pudo generar un código de inventario único después de {max_intentos} intentos. "
+                    "Esto es extremadamente raro. Contacte al administrador del sistema."
+                )
+
+        super().save(*args, **kwargs)
 
 
 # ==============================================================================

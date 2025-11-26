@@ -115,8 +115,10 @@ class UbicacionSerializer(serializers.ModelSerializer):
     Campos:
     - id: Identificador único de la ubicación
     - nombre_ubicacion: Nombre de la ubicación (ej: Sala 101, Box 3)
+    - codigo_qr: Código QR único (ej: LOC-F8A1B2) - GENERADO AUTOMÁTICAMENTE
     - departamento_id: ID del departamento (solo escritura)
     - departamento: Objeto departamento completo (solo lectura)
+    - total_activos: Cantidad de activos asignados a esta ubicación (calculado)
 
     Ejemplo de escritura:
     {
@@ -128,10 +130,12 @@ class UbicacionSerializer(serializers.ModelSerializer):
     {
         "id": 1,
         "nombre_ubicacion": "Sala 101",
+        "codigo_qr": "LOC-F8A1B2",
         "departamento": {
             "id": 1,
             "nombre_departamento": "Urgencias"
-        }
+        },
+        "total_activos": 5
     }
     """
 
@@ -146,10 +150,34 @@ class UbicacionSerializer(serializers.ModelSerializer):
     # Campo para lectura (objeto completo)
     departamento = DepartamentoSerializer(read_only=True)
 
+    # Campo calculado: total de activos en esta ubicación
+    total_activos = serializers.SerializerMethodField(
+        help_text="Cantidad de activos actualmente asignados a esta ubicación"
+    )
+
     class Meta:
         model = Ubicacion
-        fields = ['id', 'nombre_ubicacion', 'departamento_id', 'departamento']
-        read_only_fields = ['id', 'departamento']
+        fields = [
+            'id',
+            'nombre_ubicacion',
+            'codigo_qr',
+            'departamento_id',
+            'departamento',
+            'total_activos'
+        ]
+        read_only_fields = ['id', 'codigo_qr', 'departamento', 'total_activos']
+
+    def get_total_activos(self, obj):
+        """
+        Calcula el total de activos asignados a esta ubicación.
+
+        Args:
+            obj (Ubicacion): Instancia de la ubicación
+
+        Returns:
+            int: Cantidad de activos en esta ubicación
+        """
+        return obj.activos_actuales.count()
 
 
 class UsuarioSerializer(serializers.ModelSerializer):
@@ -245,7 +273,7 @@ class ActivoSerializer(serializers.ModelSerializer):
 
     Campos:
     - id: Identificador único del activo
-    - codigo_inventario: Código único de inventario (ej: ACT-2024-001)
+    - codigo_inventario: Código único de inventario (ej: INV-25-A1B2C3) - GENERADO AUTOMÁTICAMENTE
     - numero_serie: Número de serie del fabricante
     - marca: Marca o fabricante (ej: HP, Dell, Samsung)
     - modelo: Modelo específico (ej: EliteBook 840 G8)
@@ -261,10 +289,10 @@ class ActivoSerializer(serializers.ModelSerializer):
     - En una sola petición GET obtiene toda la información necesaria
     - No necesita hacer 3 peticiones adicionales para tipo, estado y ubicación
     - Evita el problema N+1 queries en el frontend
+    - El código de inventario se genera automáticamente (no enviarlo en POST)
 
     Ejemplo de escritura (POST):
     {
-        "codigo_inventario": "ACT-2024-001",
         "numero_serie": "SN123456",
         "marca": "HP",
         "modelo": "EliteBook 840 G8",
@@ -276,7 +304,7 @@ class ActivoSerializer(serializers.ModelSerializer):
     Ejemplo de lectura (GET):
     {
         "id": 1,
-        "codigo_inventario": "ACT-2024-001",
+        "codigo_inventario": "INV-25-A1B2C3",
         "numero_serie": "SN123456",
         "marca": "HP",
         "modelo": "EliteBook 840 G8",
@@ -292,10 +320,12 @@ class ActivoSerializer(serializers.ModelSerializer):
         "ubicacion_actual": {
             "id": 1,
             "nombre_ubicacion": "Sala 101",
+            "codigo_qr": "LOC-F8A1B2",
             "departamento": {
                 "id": 1,
                 "nombre_departamento": "Urgencias"
-            }
+            },
+            "total_activos": 5
         }
     }
     """
@@ -343,7 +373,7 @@ class ActivoSerializer(serializers.ModelSerializer):
             'ubicacion_actual_id',
             'ubicacion_actual'
         ]
-        read_only_fields = ['id', 'fecha_alta', 'tipo', 'estado', 'ubicacion_actual']
+        read_only_fields = ['id', 'codigo_inventario', 'fecha_alta', 'tipo', 'estado', 'ubicacion_actual']
 
 
 # ==============================================================================
@@ -356,18 +386,28 @@ class HistorialMovimientoSerializer(serializers.ModelSerializer):
 
     HÍBRIDO LECTURA/ESCRITURA:
     - Escritura (POST/PUT): Acepta IDs limpios (activo_id, usuario_registra_id, etc.)
-    - Lectura (GET): Devuelve objetos completos para trazabilidad completa
+    - Lectura (GET): Devuelve objetos completos + códigos legibles para reportes
+
+    CAMPOS CRÍTICOS PARA REPORTES:
+    - codigo_activo: Código de inventario del activo (ej: INV-25-A1B2C3)
+    - codigo_origen: Código QR de la ubicación origen (ej: LOC-F8A1B2)
+    - codigo_destino: Código QR de la ubicación destino (ej: LOC-A3C4D5)
+    - nombre_usuario: Nombre completo del usuario que registró el movimiento
 
     Campos:
     - id: Identificador único del movimiento
     - activo_id: ID del activo movido (solo escritura)
     - activo: Objeto activo con código e info básica (solo lectura)
+    - codigo_activo: Código de inventario del activo (solo lectura)
     - usuario_registra_id: ID del usuario que registra (solo escritura)
     - usuario_registra: Objeto usuario completo (solo lectura)
+    - nombre_usuario: Nombre completo del usuario (solo lectura)
     - ubicacion_origen_id: ID de la ubicación origen (solo escritura)
     - ubicacion_origen: Objeto ubicación origen con departamento (solo lectura)
+    - codigo_origen: Código QR de la ubicación origen (solo lectura)
     - ubicacion_destino_id: ID de la ubicación destino (solo escritura)
     - ubicacion_destino: Objeto ubicación destino con departamento (solo lectura)
+    - codigo_destino: Código QR de la ubicación destino (solo lectura)
     - fecha_movimiento: Timestamp del movimiento (auto)
     - tipo_movimiento: Tipo (TRASLADO, ASIGNACION, DEVOLUCION, BAJA)
     - comentarios: Observaciones adicionales
@@ -408,18 +448,47 @@ class HistorialMovimientoSerializer(serializers.ModelSerializer):
     ubicacion_origen = serializers.SerializerMethodField(read_only=True)
     ubicacion_destino = serializers.SerializerMethodField(read_only=True)
 
+    # Campos de códigos legibles para reportes (CRÍTICO)
+    codigo_activo = serializers.CharField(
+        source='activo.codigo_inventario',
+        read_only=True,
+        help_text="Código de inventario del activo (ej: INV-25-A1B2C3)"
+    )
+
+    codigo_origen = serializers.CharField(
+        source='ubicacion_origen.codigo_qr',
+        read_only=True,
+        help_text="Código QR de la ubicación origen (ej: LOC-F8A1B2)"
+    )
+
+    codigo_destino = serializers.CharField(
+        source='ubicacion_destino.codigo_qr',
+        read_only=True,
+        help_text="Código QR de la ubicación destino (ej: LOC-A3C4D5)"
+    )
+
+    nombre_usuario = serializers.CharField(
+        source='usuario_registra.nombre_completo',
+        read_only=True,
+        help_text="Nombre completo del usuario que registró el movimiento"
+    )
+
     class Meta:
         model = HistorialMovimiento
         fields = [
             'id',
             'activo_id',
             'activo',
+            'codigo_activo',
             'usuario_registra_id',
             'usuario_registra',
+            'nombre_usuario',
             'ubicacion_origen_id',
             'ubicacion_origen',
+            'codigo_origen',
             'ubicacion_destino_id',
             'ubicacion_destino',
+            'codigo_destino',
             'fecha_movimiento',
             'tipo_movimiento',
             'comentarios'
@@ -428,13 +497,21 @@ class HistorialMovimientoSerializer(serializers.ModelSerializer):
             'id',
             'fecha_movimiento',
             'activo',
+            'codigo_activo',
             'usuario_registra',
+            'nombre_usuario',
             'ubicacion_origen',
-            'ubicacion_destino'
+            'codigo_origen',
+            'ubicacion_destino',
+            'codigo_destino'
         ]
 
     def get_activo(self, obj):
-        """Devuelve información básica del activo."""
+        """
+        Devuelve información básica del activo.
+
+        Incluye el código de inventario para facilitar la identificación.
+        """
         return {
             'id': obj.activo.id,
             'codigo_inventario': obj.activo.codigo_inventario,
@@ -443,7 +520,11 @@ class HistorialMovimientoSerializer(serializers.ModelSerializer):
         }
 
     def get_usuario_registra(self, obj):
-        """Devuelve información del usuario que registró el movimiento."""
+        """
+        Devuelve información del usuario que registró el movimiento.
+
+        Incluye username y nombre completo para reportes.
+        """
         return {
             'id': obj.usuario_registra.id,
             'username': obj.usuario_registra.username,
@@ -451,18 +532,28 @@ class HistorialMovimientoSerializer(serializers.ModelSerializer):
         }
 
     def get_ubicacion_origen(self, obj):
-        """Devuelve información completa de la ubicación origen."""
+        """
+        Devuelve información completa de la ubicación origen.
+
+        Incluye código QR para escaneo y trazabilidad.
+        """
         return {
             'id': obj.ubicacion_origen.id,
             'nombre_ubicacion': obj.ubicacion_origen.nombre_ubicacion,
+            'codigo_qr': obj.ubicacion_origen.codigo_qr,
             'departamento': obj.ubicacion_origen.departamento.nombre_departamento
         }
 
     def get_ubicacion_destino(self, obj):
-        """Devuelve información completa de la ubicación destino."""
+        """
+        Devuelve información completa de la ubicación destino.
+
+        Incluye código QR para escaneo y trazabilidad.
+        """
         return {
             'id': obj.ubicacion_destino.id,
             'nombre_ubicacion': obj.ubicacion_destino.nombre_ubicacion,
+            'codigo_qr': obj.ubicacion_destino.codigo_qr,
             'departamento': obj.ubicacion_destino.departamento.nombre_departamento
         }
 
