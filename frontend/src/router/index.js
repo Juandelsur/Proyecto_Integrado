@@ -18,21 +18,21 @@ const router = createRouter({
       component: () => import('../views/AboutView.vue'),
     },
     // ========================================================================
-    // RUTAS DE ACTIVOS
+    // RUTAS DE ACTIVOS (ADMIN)
     // ========================================================================
     {
-      path: '/activos',
+      path: '/inventario',
       name: 'asset-list',
-      component: () => import('../views/AssetListView.vue'),
+      component: () => import('../views/admin/AssetListView.vue'),
       meta: {
-        title: 'Lista de Activos',
+        title: 'Inventario',
         requiresAuth: true
       }
     },
     {
       path: '/activos/:id',
       name: 'asset-detail',
-      component: () => import('../views/AssetDetailView.vue'),
+      component: () => import('../views/admin/AssetDetailView.vue'),
       meta: {
         title: 'Detalle de Activo',
         requiresAuth: true
@@ -74,7 +74,7 @@ const router = createRouter({
     {
       path: '/imprimir-etiquetas',
       name: 'print-qrs',
-      component: () => import('../views/PrintQRsView.vue'),
+      component: () => import('../views/admin/PrintQRsView.vue'),
       meta: {
         title: 'Imprimir Etiquetas QR',
         requiresAuth: true,
