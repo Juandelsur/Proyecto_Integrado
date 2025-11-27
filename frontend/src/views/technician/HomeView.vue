@@ -26,6 +26,14 @@
         </button>
       </div>
 
+      <!-- Botón Secundario: Imprimir Etiquetas -->
+      <div class="print-action">
+        <button @click="goToPrintLabels" class="btn-print">
+          <i class="bi bi-printer"></i>
+          <span>🖨️ Imprimir Etiquetas</span>
+        </button>
+      </div>
+
       <!-- Botones Secundarios -->
       <div class="secondary-actions">
         <button @click="goToHistory" class="btn-secondary">
@@ -63,6 +71,13 @@ const userName = computed(() => {
  */
 function goToScan() {
   router.push('/escanear')
+}
+
+/**
+ * Navega a la vista de impresión de etiquetas
+ */
+function goToPrintLabels() {
+  router.push('/imprimir-etiquetas')
 }
 
 /**
@@ -238,6 +253,49 @@ function handleLogout() {
   font-weight: 400;
   margin: 0;
   opacity: 0.9;
+}
+
+/* ============================================================================
+   BOTÓN DE IMPRESIÓN (OUTLINE BLANCO)
+   ============================================================================ */
+
+.print-action {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.btn-print {
+  width: 100%;
+  background: white;
+  border: 2px solid #e0e0e0;
+  color: #424242;
+  padding: 1rem 1.5rem;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.btn-print:hover {
+  background: #f5f5f5;
+  border-color: #bdbdbd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-print:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-print i {
+  font-size: 1.3rem;
 }
 
 /* ============================================================================

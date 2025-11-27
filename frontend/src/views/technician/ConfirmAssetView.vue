@@ -83,11 +83,11 @@
           >
             <span v-if="!isConfirming" class="btn-content">
               <i class="bi bi-check-circle"></i>
-              <span>Confirmar Registro</span>
+              <span>Actualizar Ubicación</span>
             </span>
             <span v-else class="btn-content">
               <div class="btn-spinner"></div>
-              <span>Confirmando...</span>
+              <span>Actualizando...</span>
             </span>
           </button>
 
