@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import apiClient from '@/services/api'
 import QRCode from 'qrcode'
@@ -94,6 +94,7 @@ function setCanvasRef(activoId, el) {
 async function loadActivos() {
   try {
     isLoading.value = true
+    console.log('📡 Cargando activos desde la API...')
 
     const params = {
       page_size: 12, // Límite de seguridad para no saturar servidor
@@ -103,10 +104,17 @@ async function loadActivos() {
     const response = await apiClient.get('/api/activos/', { params })
     activos.value = Array.isArray(response.data) ? response.data : response.data.results || []
 
+    console.log('✅ Activos cargados:', activos.value.length)
+    console.log('📋 Códigos de inventario:', activos.value.map(a => a.codigo_inventario))
+
+    // Esperar a que Vue renderice los canvas en el DOM
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 150))
+
     // Generar QR codes después de cargar los activos
     await generateQRCodes()
   } catch (error) {
-    console.error('Error al cargar activos:', error)
+    console.error('❌ Error al cargar activos:', error)
     alert('Error al cargar los activos para impresión.')
   } finally {
     isLoading.value = false
@@ -117,14 +125,22 @@ async function loadActivos() {
  * Genera los códigos QR para todos los activos
  */
 async function generateQRCodes() {
+  console.log('🎨 Iniciando generación de QR codes...')
+  console.log('📦 Total de activos:', activos.value.length)
+
   // Esperar a que los canvas estén montados en el DOM
-  await new Promise(resolve => setTimeout(resolve, 100))
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  let generatedCount = 0
+  let errorCount = 0
 
   for (const activo of activos.value) {
     const canvas = canvasRefs.value[activo.id]
 
     if (canvas) {
       try {
+        console.log(`🔄 Generando QR para: ${activo.codigo_inventario} (ID: ${activo.id})`)
+
         // Generar QR code con el código de inventario
         await QRCode.toCanvas(canvas, activo.codigo_inventario, {
           width: 200,
@@ -132,13 +148,23 @@ async function generateQRCodes() {
           color: {
             dark: '#000000',
             light: '#FFFFFF'
-          }
+          },
+          errorCorrectionLevel: 'M'
         })
+
+        generatedCount++
+        console.log(`✅ QR generado exitosamente para: ${activo.codigo_inventario}`)
       } catch (error) {
-        console.error(`Error al generar QR para activo ${activo.id}:`, error)
+        errorCount++
+        console.error(`❌ Error al generar QR para activo ${activo.id}:`, error)
       }
+    } else {
+      errorCount++
+      console.warn(`⚠️ Canvas no encontrado para activo ${activo.id}`)
     }
   }
+
+  console.log(`🎉 Generación completada: ${generatedCount} exitosos, ${errorCount} errores`)
 }
 
 /**
