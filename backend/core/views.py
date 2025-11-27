@@ -6,10 +6,16 @@ los endpoints de la API.
 
 Características:
 - Autenticación JWT requerida en todos los endpoints (IsAuthenticated)
+- Control de acceso basado en roles (RBAC) con permisos personalizados
 - Documentación automática con drf-spectacular (@extend_schema_view)
 - Optimización SQL con select_related() para evitar N+1 queries
 - CRUD completo para todos los modelos (excepto AuditoriaLog que es read-only)
 - Tags organizados para OpenAPI: Maestros, Core, Trazabilidad, Auditoría
+
+Sistema de Permisos por Rol:
+- Administrador: Acceso total a todos los recursos
+- Técnico: CRUD en activos (sin DELETE), movilización, consulta de historial
+- Jefe de Departamento: Solo lectura en activos, historial y auditoría
 """
 
 from rest_framework import viewsets, status
@@ -19,6 +25,14 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from django.db import transaction
 from django.core.exceptions import ValidationError
+
+# Importar permisos personalizados RBAC
+from .permissions import (
+    IsAdminUser,
+    IsJefeOrAdminReadOnly,
+    IsTecnicoOperativo,
+    CanDeleteActivo
+)
 
 from .models import (
     Rol,
@@ -62,6 +76,13 @@ class RolViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Roles de usuario.
 
+    SEGURIDAD: Solo Administradores pueden gestionar roles.
+
+    Permisos:
+    - Administrador: CRUD completo
+    - Técnico: Acceso denegado
+    - Jefe: Acceso denegado
+
     Endpoints:
     - GET /api/roles/ - Listar todos los roles
     - POST /api/roles/ - Crear un nuevo rol
@@ -72,7 +93,7 @@ class RolViewSet(viewsets.ModelViewSet):
     """
     queryset = Rol.objects.all()
     serializer_class = RolSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
 
 @extend_schema_view(
@@ -87,6 +108,13 @@ class DepartamentoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Departamentos del hospital.
 
+    SEGURIDAD: Solo Administradores pueden gestionar departamentos (maestro crítico).
+
+    Permisos:
+    - Administrador: CRUD completo
+    - Técnico: Acceso denegado
+    - Jefe: Acceso denegado
+
     Endpoints:
     - GET /api/departamentos/ - Listar todos los departamentos
     - POST /api/departamentos/ - Crear un nuevo departamento
@@ -97,7 +125,7 @@ class DepartamentoViewSet(viewsets.ModelViewSet):
     """
     queryset = Departamento.objects.all()
     serializer_class = DepartamentoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
 
 @extend_schema_view(
@@ -112,6 +140,13 @@ class TipoEquipoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Tipos de Equipo.
 
+    SEGURIDAD: Solo Administradores pueden gestionar tipos de equipo (maestro crítico).
+
+    Permisos:
+    - Administrador: CRUD completo
+    - Técnico: Acceso denegado
+    - Jefe: Acceso denegado
+
     Endpoints:
     - GET /api/tipos-equipo/ - Listar todos los tipos de equipo
     - POST /api/tipos-equipo/ - Crear un nuevo tipo de equipo
@@ -122,7 +157,7 @@ class TipoEquipoViewSet(viewsets.ModelViewSet):
     """
     queryset = TipoEquipo.objects.all()
     serializer_class = TipoEquipoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
 
 @extend_schema_view(
@@ -137,6 +172,13 @@ class EstadoActivoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Estados de Activo.
 
+    SEGURIDAD: Solo Administradores pueden gestionar estados de activo (maestro crítico).
+
+    Permisos:
+    - Administrador: CRUD completo
+    - Técnico: Acceso denegado
+    - Jefe: Acceso denegado
+
     Endpoints:
     - GET /api/estados-activo/ - Listar todos los estados de activo
     - POST /api/estados-activo/ - Crear un nuevo estado de activo
@@ -147,7 +189,7 @@ class EstadoActivoViewSet(viewsets.ModelViewSet):
     """
     queryset = EstadoActivo.objects.all()
     serializer_class = EstadoActivoSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
 
 
@@ -167,6 +209,13 @@ class UbicacionViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Ubicaciones.
 
+    SEGURIDAD: Solo Administradores pueden gestionar ubicaciones (maestro crítico).
+
+    Permisos:
+    - Administrador: CRUD completo
+    - Técnico: Acceso denegado
+    - Jefe: Acceso denegado
+
     OPTIMIZACIÓN: Usa select_related('departamento') para evitar N+1 queries.
 
     Endpoints:
@@ -179,7 +228,7 @@ class UbicacionViewSet(viewsets.ModelViewSet):
     """
     queryset = Ubicacion.objects.select_related('departamento').all()
     serializer_class = UbicacionSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
 
 @extend_schema_view(
@@ -193,6 +242,13 @@ class UbicacionViewSet(viewsets.ModelViewSet):
 class UsuarioViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Usuarios.
+
+    SEGURIDAD: Solo Administradores pueden gestionar usuarios (recurso crítico).
+
+    Permisos:
+    - Administrador: CRUD completo (crear, editar, eliminar usuarios)
+    - Técnico: Acceso denegado
+    - Jefe: Acceso denegado
 
     OPTIMIZACIÓN: Usa select_related('rol') para evitar N+1 queries.
 
@@ -208,7 +264,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     """
     queryset = Usuario.objects.select_related('rol').all()
     serializer_class = UsuarioSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
 
 # ==============================================================================
@@ -251,6 +307,27 @@ class ActivoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Activos (ENTIDAD CENTRAL DEL SISTEMA).
 
+    SEGURIDAD - CONTROL DE ACCESO BASADO EN ROLES (RBAC):
+
+    Permisos aplicados:
+    - IsAuthenticated: Todos los usuarios deben estar autenticados
+    - IsTecnicoOperativo: Permite a Técnicos y Admins crear/editar (GET, POST, PUT, PATCH)
+    - IsJefeOrAdminReadOnly: Permite a Jefes consultar activos (GET)
+    - CanDeleteActivo: Solo Administradores pueden eliminar (DELETE)
+
+    Matriz de permisos por rol:
+    ┌─────────────────┬───────┬─────────┬──────┐
+    │ Operación       │ Admin │ Técnico │ Jefe │
+    ├─────────────────┼───────┼─────────┼──────┤
+    │ GET (List)      │   ✓   │    ✓    │  ✓   │
+    │ GET (Retrieve)  │   ✓   │    ✓    │  ✓   │
+    │ POST (Create)   │   ✓   │    ✓    │  ✗   │
+    │ PUT (Update)    │   ✓   │    ✓    │  ✗   │
+    │ PATCH (Partial) │   ✓   │    ✓    │  ✗   │
+    │ DELETE          │   ✓   │    ✗    │  ✗   │
+    │ movilizar       │   ✓   │    ✓    │  ✗   │
+    └─────────────────┴───────┴─────────┴──────┘
+
     OPTIMIZACIÓN CRÍTICA:
     - Usa select_related() para cargar tipo, estado, ubicacion_actual y departamento
       en una sola query SQL (evita el problema N+1 queries).
@@ -276,17 +353,26 @@ class ActivoViewSet(viewsets.ModelViewSet):
         'ubicacion_actual__departamento'
     ).all()
     serializer_class = ActivoSerializer
-    permission_classes = [IsAuthenticated]
+
+    # RBAC: Combinación de permisos para control granular
+    # - IsTecnicoOperativo: Permite GET/POST/PUT/PATCH a Técnicos y Admins
+    # - IsJefeOrAdminReadOnly: Permite GET a Jefes
+    # - CanDeleteActivo: Bloquea DELETE excepto para Admins
+    permission_classes = [IsAuthenticated, IsTecnicoOperativo | IsJefeOrAdminReadOnly, CanDeleteActivo]
 
     @extend_schema(
         request=MovilizacionInputSerializer,
         responses={
             200: {"description": "Activo movilizado con éxito"},
             400: {"description": "Error de validación o ubicación no encontrada"},
+            403: {"description": "Permiso denegado - Solo Técnicos y Administradores"},
             404: {"description": "Activo no encontrado"}
         },
         description="""
         Moviliza un activo a una nueva ubicación (Historia de Usuario HU2).
+
+        SEGURIDAD: Solo Técnicos y Administradores pueden movilizar activos.
+        Los Jefes de Departamento NO tienen permiso para esta operación.
 
         OPERACIÓN TRANSACCIONAL (ACID):
         Esta operación es atómica. Si alguna parte falla, toda la operación se revierte.
@@ -307,7 +393,12 @@ class ActivoViewSet(viewsets.ModelViewSet):
         """,
         tags=["Core"]
     )
-    @action(detail=True, methods=['post'], url_path='movilizar')
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='movilizar',
+        permission_classes=[IsAuthenticated, IsTecnicoOperativo]  # Solo Técnicos y Admins
+    )
     def movilizar(self, request, pk=None):
         """
         Acción personalizada para movilizar un activo entre ubicaciones.
@@ -532,6 +623,16 @@ class HistorialMovimientoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Historial de Movimientos.
 
+    SEGURIDAD - CONTROL DE ACCESO:
+
+    Permisos por rol:
+    - Administrador: CRUD completo (puede crear, editar, eliminar registros históricos)
+    - Técnico: Solo lectura (GET) - No puede modificar el historial
+    - Jefe: Solo lectura (GET) - Puede consultar para auditoría
+
+    NOTA: Los movimientos normalmente se crean automáticamente mediante la acción
+    'movilizar' del ActivoViewSet. Este endpoint permite gestión manual si es necesario.
+
     OPTIMIZACIÓN:
     - Usa select_related() para cargar todas las relaciones en una sola query.
 
@@ -540,11 +641,11 @@ class HistorialMovimientoViewSet(viewsets.ModelViewSet):
 
     Endpoints:
     - GET /api/historial-movimientos/ - Listar todos los movimientos
-    - POST /api/historial-movimientos/ - Registrar un nuevo movimiento
+    - POST /api/historial-movimientos/ - Registrar un nuevo movimiento (solo Admin)
     - GET /api/historial-movimientos/{id}/ - Obtener un movimiento específico
-    - PUT /api/historial-movimientos/{id}/ - Actualizar un movimiento completo
-    - PATCH /api/historial-movimientos/{id}/ - Actualizar parcialmente un movimiento
-    - DELETE /api/historial-movimientos/{id}/ - Eliminar un movimiento
+    - PUT /api/historial-movimientos/{id}/ - Actualizar un movimiento completo (solo Admin)
+    - PATCH /api/historial-movimientos/{id}/ - Actualizar parcialmente un movimiento (solo Admin)
+    - DELETE /api/historial-movimientos/{id}/ - Eliminar un movimiento (solo Admin)
     """
     queryset = HistorialMovimiento.objects.select_related(
         'activo',
@@ -555,7 +656,9 @@ class HistorialMovimientoViewSet(viewsets.ModelViewSet):
         'ubicacion_destino__departamento'
     ).all()
     serializer_class = HistorialMovimientoSerializer
-    permission_classes = [IsAuthenticated]
+
+    # RBAC: Jefes y Técnicos pueden consultar, solo Admin puede modificar
+    permission_classes = [IsAuthenticated, IsJefeOrAdminReadOnly]
 
 
 @extend_schema_view(
@@ -574,6 +677,18 @@ class AuditoriaLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet para consulta de Logs de Auditoría (SOLO LECTURA).
 
+    SEGURIDAD - CONTROL DE ACCESO:
+
+    Permisos por rol:
+    - Administrador: Acceso completo a todos los logs de auditoría
+    - Jefe de Departamento: Acceso completo (para supervisión y control)
+    - Técnico: Acceso denegado (no necesitan ver logs de auditoría)
+
+    JUSTIFICACIÓN:
+    - Los Jefes necesitan acceso a auditoría para supervisar operaciones
+    - Los Técnicos no requieren acceso a logs de auditoría del sistema
+    - Solo lectura: Los logs nunca se modifican manualmente (integridad)
+
     IMPORTANTE:
     - Este ViewSet es ReadOnlyModelViewSet (solo GET).
     - Los logs de auditoría no se crean, modifican ni eliminan manualmente.
@@ -588,4 +703,6 @@ class AuditoriaLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = AuditoriaLog.objects.select_related('usuario').all()
     serializer_class = AuditoriaLogSerializer
-    permission_classes = [IsAuthenticated]
+
+    # RBAC: Solo Administradores y Jefes pueden consultar auditoría
+    permission_classes = [IsAuthenticated, IsJefeOrAdminReadOnly]
