@@ -1,15 +1,48 @@
 /**
  * Store de Autenticación (Pinia)
- * 
+ *
  * Gestiona el estado de autenticación del usuario, incluyendo:
- * - Token JWT
- * - Información del usuario (username, rol)
- * - Permisos basados en roles (RBAC)
- * 
- * Roles del sistema:
- * - Administrador: Acceso total
- * - Técnico: Operaciones CRUD en activos, movilización, impresión
- * - Jefe de Departamento: Solo lectura (supervisión)
+ * - Token JWT (access y refresh)
+ * - Información del usuario (username, email, rol)
+ * - Permisos basados en roles (RBAC - Role-Based Access Control)
+ *
+ * ============================================================================
+ * ROLES DEL SISTEMA Y PERMISOS
+ * ============================================================================
+ *
+ * 1. ADMINISTRADOR
+ *    ✅ Imprimir etiquetas
+ *    ✅ Gestionar activos (crear/editar)
+ *    ✅ Eliminar activos
+ *    ✅ Movilizar activos
+ *    ✅ Gestionar usuarios
+ *    ✅ Ver auditoría
+ *
+ * 2. TÉCNICO
+ *    ✅ Imprimir etiquetas
+ *    ✅ Gestionar activos (crear/editar)
+ *    ❌ Eliminar activos
+ *    ✅ Movilizar activos
+ *    ❌ Gestionar usuarios
+ *    ❌ Ver auditoría
+ *
+ * 3. JEFE DE DEPARTAMENTO
+ *    ✅ Imprimir etiquetas
+ *    ❌ Gestionar activos (solo lectura)
+ *    ❌ Eliminar activos
+ *    ❌ Movilizar activos
+ *    ❌ Gestionar usuarios
+ *    ✅ Ver auditoría (supervisión)
+ *
+ * ============================================================================
+ * CAMBIO IMPORTANTE: Impresión de Etiquetas
+ * ============================================================================
+ *
+ * ANTES: Solo Admin y Técnico podían imprimir
+ * AHORA: TODOS los roles pueden imprimir etiquetas (incluyendo Jefe)
+ *
+ * Razón: Los Jefes de Departamento necesitan poder imprimir etiquetas
+ * para sus equipos, aunque no puedan editarlos.
  */
 
 import { defineStore } from 'pinia'
@@ -63,46 +96,78 @@ export const useAuthStore = defineStore('auth', () => {
   const isJefe = computed(() => {
     return userRole.value === 'Jefe de Departamento'
   })
-  
+
+  // ============================================================================
+  // PERMISOS FUNCIONALES (RBAC - Role-Based Access Control)
+  // ============================================================================
+
   /**
    * PERMISO: Puede imprimir etiquetas QR
-   * Solo Administradores y Técnicos pueden imprimir
-   * Los Jefes NO tienen este permiso (solo supervisión)
+   *
+   * ✅ TODOS LOS ROLES pueden imprimir etiquetas
+   * - Administrador: ✅
+   * - Técnico: ✅
+   * - Jefe de Departamento: ✅
+   *
+   * Requisito: Usuario debe estar autenticado
    */
   const canPrintLabels = computed(() => {
-    return isAdmin.value || isTecnico.value
+    return isAuthenticated.value
   })
-  
+
   /**
-   * PERMISO: Puede crear/editar activos
-   * Solo Administradores y Técnicos
+   * PERMISO: Puede gestionar activos (Crear/Editar)
+   *
+   * ✅ Administrador: Puede crear y editar activos
+   * ✅ Técnico: Puede crear y editar activos
+   * ❌ Jefe de Departamento: Solo lectura (supervisión)
    */
-  const canEditAssets = computed(() => {
+  const canManageAssets = computed(() => {
     return isAdmin.value || isTecnico.value
   })
-  
+
   /**
    * PERMISO: Puede eliminar activos
-   * Solo Administradores
+   *
+   * ✅ Administrador: Puede eliminar activos
+   * ❌ Técnico: NO puede eliminar
+   * ❌ Jefe de Departamento: NO puede eliminar
    */
   const canDeleteAssets = computed(() => {
     return isAdmin.value
   })
-  
+
   /**
    * PERMISO: Puede movilizar activos
-   * Solo Administradores y Técnicos
+   *
+   * ✅ Administrador: Puede movilizar activos
+   * ✅ Técnico: Puede movilizar activos
+   * ❌ Jefe de Departamento: NO puede movilizar
    */
   const canMoveAssets = computed(() => {
     return isAdmin.value || isTecnico.value
   })
-  
+
   /**
    * PERMISO: Puede gestionar usuarios
-   * Solo Administradores
+   *
+   * ✅ Administrador: Puede crear/editar/eliminar usuarios
+   * ❌ Técnico: NO puede gestionar usuarios
+   * ❌ Jefe de Departamento: NO puede gestionar usuarios
    */
   const canManageUsers = computed(() => {
     return isAdmin.value
+  })
+
+  /**
+   * PERMISO: Puede ver auditoría
+   *
+   * ✅ Administrador: Puede ver auditoría completa
+   * ❌ Técnico: NO puede ver auditoría
+   * ✅ Jefe de Departamento: Puede ver auditoría (supervisión)
+   */
+  const canViewAudit = computed(() => {
+    return isAdmin.value || isJefe.value
   })
   
   // ============================================================================
@@ -175,21 +240,22 @@ export const useAuthStore = defineStore('auth', () => {
     // State
     token,
     user,
-    
-    // Getters
+
+    // Getters - Información del Usuario
     isAuthenticated,
     userRole,
     isAdmin,
     isTecnico,
     isJefe,
-    
-    // Permisos
-    canPrintLabels,
-    canEditAssets,
-    canDeleteAssets,
-    canMoveAssets,
-    canManageUsers,
-    
+
+    // Permisos Funcionales (RBAC)
+    canPrintLabels,      // ✅ TODOS los roles
+    canManageAssets,     // ✅ Admin, Técnico
+    canDeleteAssets,     // ✅ Solo Admin
+    canMoveAssets,       // ✅ Admin, Técnico
+    canManageUsers,      // ✅ Solo Admin
+    canViewAudit,        // ✅ Admin, Jefe
+
     // Actions
     login,
     logout,
