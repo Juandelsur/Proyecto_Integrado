@@ -97,9 +97,27 @@ const router = createRouter({
     {
       path: '/escanear',
       name: 'scan-qr',
-      component: () => import('../views/technician/ScanQRView.vue'),
+      component: () => import('../views/technician/ScannerView.vue'),
       meta: {
         title: 'Escanear QR',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/confirmar-equipo/:id',
+      name: 'confirm-asset',
+      component: () => import('../views/technician/ConfirmAssetView.vue'),
+      meta: {
+        title: 'Confirmar Equipo',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/registro-exitoso',
+      name: 'movement-success',
+      component: () => import('../views/technician/MovementSuccessView.vue'),
+      meta: {
+        title: 'Registro Exitoso',
         requiresAuth: true
       }
     },
