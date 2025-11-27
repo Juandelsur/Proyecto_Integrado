@@ -35,10 +35,15 @@
 
           <!-- Imagen QR -->
           <div class="qr-image-container">
-            <canvas
-              :ref="el => setCanvasRef(activo.id, el)"
-              class="qr-canvas"
-            ></canvas>
+            <img
+              v-if="qrImages[activo.id]"
+              :src="qrImages[activo.id]"
+              :alt="`QR Code ${activo.codigo_inventario}`"
+              class="qr-code-img"
+            />
+            <div v-else class="qr-loading">
+              <div class="qr-spinner"></div>
+            </div>
           </div>
 
           <!-- Código de Texto -->
@@ -66,7 +71,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import apiClient from '@/services/api'
 import QRCode from 'qrcode'
@@ -77,16 +82,7 @@ const route = useRoute()
 // Estado
 const activos = ref([])
 const isLoading = ref(true)
-const canvasRefs = ref({})
-
-/**
- * Guarda la referencia del canvas para cada activo
- */
-function setCanvasRef(activoId, el) {
-  if (el) {
-    canvasRefs.value[activoId] = el
-  }
-}
+const qrImages = ref({}) // ✅ Objeto reactivo para almacenar imágenes base64
 
 /**
  * Carga los activos desde la API (máximo 12)
@@ -107,12 +103,8 @@ async function loadActivos() {
     console.log('✅ Activos cargados:', activos.value.length)
     console.log('📋 Códigos de inventario:', activos.value.map(a => a.codigo_inventario))
 
-    // Esperar a que Vue renderice los canvas en el DOM
-    await nextTick()
-    await new Promise(resolve => setTimeout(resolve, 150))
-
-    // Generar QR codes después de cargar los activos
-    await generateQRCodes()
+    // ✅ Generar QR codes inmediatamente (no necesita esperar al DOM)
+    await generateQRImages()
   } catch (error) {
     console.error('❌ Error al cargar activos:', error)
     alert('Error al cargar los activos para impresión.')
@@ -122,49 +114,50 @@ async function loadActivos() {
 }
 
 /**
- * Genera los códigos QR para todos los activos
+ * Genera las imágenes QR en formato base64 para todos los activos
+ * ✅ ESTRATEGIA ROBUSTA: No depende del timing del DOM
  */
-async function generateQRCodes() {
-  console.log('🎨 Iniciando generación de QR codes...')
+async function generateQRImages() {
+  console.log('🎨 Iniciando generación de QR codes (BASE64)...')
   console.log('📦 Total de activos:', activos.value.length)
-
-  // Esperar a que los canvas estén montados en el DOM
-  await new Promise(resolve => setTimeout(resolve, 200))
 
   let generatedCount = 0
   let errorCount = 0
 
-  for (const activo of activos.value) {
-    const canvas = canvasRefs.value[activo.id]
+  // ✅ Generar todas las imágenes en paralelo para máxima velocidad
+  const promises = activos.value.map(async (activo) => {
+    try {
+      console.log(`🔄 Generando QR para: ${activo.codigo_inventario} (ID: ${activo.id})`)
 
-    if (canvas) {
-      try {
-        console.log(`🔄 Generando QR para: ${activo.codigo_inventario} (ID: ${activo.id})`)
+      // ✅ Generar imagen base64 directamente
+      const dataUrl = await QRCode.toDataURL(activo.codigo_inventario, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'M'
+      })
 
-        // Generar QR code con el código de inventario
-        await QRCode.toCanvas(canvas, activo.codigo_inventario, {
-          width: 200,
-          margin: 1,
-          color: {
-            dark: '#000000',
-            light: '#FFFFFF'
-          },
-          errorCorrectionLevel: 'M'
-        })
+      // ✅ Guardar en el objeto reactivo
+      qrImages.value[activo.id] = dataUrl
+      generatedCount++
+      console.log(`✅ QR generado exitosamente para: ${activo.codigo_inventario}`)
 
-        generatedCount++
-        console.log(`✅ QR generado exitosamente para: ${activo.codigo_inventario}`)
-      } catch (error) {
-        errorCount++
-        console.error(`❌ Error al generar QR para activo ${activo.id}:`, error)
-      }
-    } else {
+      return { success: true, id: activo.id }
+    } catch (error) {
       errorCount++
-      console.warn(`⚠️ Canvas no encontrado para activo ${activo.id}`)
+      console.error(`❌ Error al generar QR para activo ${activo.id}:`, error)
+      return { success: false, id: activo.id, error }
     }
-  }
+  })
+
+  // ✅ Esperar a que todas las imágenes se generen
+  await Promise.all(promises)
 
   console.log(`🎉 Generación completada: ${generatedCount} exitosos, ${errorCount} errores`)
+  console.log('📊 QR Images:', Object.keys(qrImages.value).length)
 }
 
 /**
@@ -349,12 +342,34 @@ onMounted(() => {
 
 .qr-image-container {
   margin: 0.5rem 0;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.qr-canvas {
+.qr-code-img {
   display: block;
   max-width: 100%;
   height: auto;
+  width: 200px;
+}
+
+.qr-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+}
+
+.qr-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e0e0e0;
+  border-top-color: #1565c0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .qr-code-text {
@@ -478,11 +493,16 @@ onMounted(() => {
   .qr-image-container {
     margin: 0;
     flex-shrink: 0;
+    min-height: auto;
   }
 
-  .qr-canvas {
+  .qr-code-img {
     width: 2.5cm !important;
     height: 2.5cm !important;
+  }
+
+  .qr-loading {
+    display: none;
   }
 
   .qr-code-text {
