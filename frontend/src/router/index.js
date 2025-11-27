@@ -82,6 +82,46 @@ const router = createRouter({
       }
     },
     // ========================================================================
+    // RUTAS DEL TÉCNICO
+    // ========================================================================
+    {
+      path: '/tecnico/home',
+      name: 'technician-home',
+      component: () => import('../views/technician/HomeView.vue'),
+      meta: {
+        title: 'Home - Técnico',
+        requiresAuth: true,
+        requiresRole: 'Técnico'
+      }
+    },
+    {
+      path: '/escanear',
+      name: 'scan-qr',
+      component: () => import('../views/technician/ScanQRView.vue'),
+      meta: {
+        title: 'Escanear QR',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/historico',
+      name: 'history',
+      component: () => import('../views/technician/HistoryView.vue'),
+      meta: {
+        title: 'Histórico',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/configuracion',
+      name: 'settings',
+      component: () => import('../views/technician/SettingsView.vue'),
+      meta: {
+        title: 'Configuración',
+        requiresAuth: true
+      }
+    },
+    // ========================================================================
     // RUTA DE LOGIN
     // ========================================================================
     {
@@ -121,6 +161,22 @@ router.beforeEach((to, from, next) => {
       // Redirigir a home si no tiene el permiso
       alert('❌ No tienes permisos para acceder a esta página.')
       next({ name: 'home' })
+      return
+    }
+  }
+
+  // Verificar rol específico
+  if (to.meta.requiresRole) {
+    const requiredRole = to.meta.requiresRole
+    if (authStore.userRole !== requiredRole) {
+      // Redirigir según el rol del usuario
+      alert('❌ Esta página es solo para técnicos.')
+
+      if (authStore.isAdmin || authStore.isJefe) {
+        next({ name: 'home' })
+      } else {
+        next({ name: 'home' })
+      }
       return
     }
   }
