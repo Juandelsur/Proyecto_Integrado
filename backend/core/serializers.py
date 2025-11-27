@@ -620,7 +620,16 @@ class AuditoriaLogSerializer(serializers.ModelSerializer):
             'detalle_accion',
             'timestamp'
         ]
-        read_only_fields = '__all__'  # Todos los campos son de solo lectura
+        # Todos los campos son de solo lectura (debe ser lista/tupla, no string)
+        read_only_fields = [
+            'id',
+            'usuario',
+            'usuario_username',
+            'usuario_nombre_completo',
+            'accion',
+            'detalle_accion',
+            'timestamp'
+        ]
 
 
 # ==============================================================================
