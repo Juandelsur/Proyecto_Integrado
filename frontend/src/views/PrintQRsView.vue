@@ -420,61 +420,252 @@ onMounted(() => {
 }
 
 /* ============================================================================
-   ESTILOS DE IMPRESIÓN
+   ESTILOS DE IMPRESIÓN - ETIQUETAS PROFESIONALES TIPO PLACA DE INVENTARIO
    ============================================================================ */
 
 @media print {
+  /* ========================================================================
+     CONFIGURACIÓN DE PÁGINA
+     ======================================================================== */
+
   /* Ocultar controles al imprimir */
   .no-print {
     display: none !important;
   }
 
-  /* Configuración de página */
+  /* Configuración de página A4 */
   @page {
-    size: A4;
-    margin: 1cm;
+    size: A4 portrait;
+    margin: 1cm 0.5cm;
   }
 
-  /* Ajustar contenedor */
+  /* Ajustar contenedor principal */
   .print-qrs-view {
     max-width: 100%;
     padding: 0;
+    margin: 0;
   }
 
-  /* Asegurar que las tarjetas no se corten */
+  /* ========================================================================
+     TÍTULOS DE SECCIÓN
+     ======================================================================== */
+
+  .section {
+    page-break-inside: avoid;
+    margin-bottom: 0.5cm;
+  }
+
+  .section-title {
+    font-size: 14pt;
+    font-weight: bold;
+    color: #000;
+    margin-bottom: 0.3cm;
+    padding-bottom: 0.2cm;
+    border-bottom: 2px solid #000;
+    page-break-after: avoid;
+  }
+
+  /* ========================================================================
+     GRILLA DE ETIQUETAS - 2 COLUMNAS PARA ETIQUETAS HORIZONTALES
+     ======================================================================== */
+
+  .qr-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4cm;
+    margin-bottom: 0.5cm;
+  }
+
+  /* ========================================================================
+     TARJETA DE ETIQUETA - DISEÑO HORIZONTAL TIPO PLACA DE INVENTARIO
+     ======================================================================== */
+
   .qr-card {
+    /* Tamaño físico de la etiqueta */
+    width: 8cm;
+    height: 5cm;
+
+    /* Espaciado interno */
+    padding: 0.5cm;
+
+    /* Borde punteado fino para recortar */
+    border: 1px dashed #333 !important;
+    border-radius: 0 !important;
+
+    /* Evitar que se corte entre páginas */
     page-break-inside: avoid;
     break-inside: avoid;
+
+    /* Layout horizontal: QR a la izquierda, texto a la derecha */
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.4cm;
+
+    /* Fondo blanco */
+    background: white !important;
+
+    /* Sin sombras en impresión */
+    box-shadow: none !important;
   }
 
-  /* Ajustar grilla para impresión */
-  .qr-grid {
-    gap: 1rem;
-  }
-
-  /* Mantener bordes visibles */
+  /* Bordes diferenciados por tipo */
   .qr-card-activo {
-    border: 2px dashed #000 !important;
+    border: 1px dashed #000 !important;
   }
 
   .qr-card-ubicacion {
-    border: 2px dashed #3498db !important;
+    border: 1px dashed #3498db !important;
   }
 
-  /* Asegurar que las imágenes se impriman */
+  /* ========================================================================
+     IMAGEN QR - TAMAÑO EXACTO PARA ESCANEO ÓPTIMO
+     ======================================================================== */
+
+  .qr-image {
+    /* Tamaño fijo del QR */
+    width: 2.8cm !important;
+    height: 2.8cm !important;
+    min-width: 2.8cm !important;
+    min-height: 2.8cm !important;
+
+    /* Centrar la imagen */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    /* Margen blanco alrededor del QR */
+    padding: 0.1cm;
+    background: white;
+
+    /* Sin bordes ni márgenes adicionales */
+    margin: 0 !important;
+    border: none !important;
+  }
+
   .qr-image img {
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    /* Tamaño exacto de la imagen QR */
+    width: 2.6cm !important;
+    height: 2.6cm !important;
+    max-width: 2.6cm !important;
+    max-height: 2.6cm !important;
+
+    /* Asegurar que se imprima correctamente */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+
+    /* Sin filtros ni transformaciones */
+    object-fit: contain !important;
   }
 
-  /* Evitar saltos de página en secciones */
-  .section {
-    page-break-inside: avoid;
+  .qr-placeholder {
+    width: 2.8cm !important;
+    height: 2.8cm !important;
+    background: #f0f0f0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 8pt !important;
+    color: #999 !important;
   }
 
-  /* Títulos de sección */
-  .section-title {
-    page-break-after: avoid;
+  /* ========================================================================
+     INFORMACIÓN DE TEXTO - LADO DERECHO DE LA ETIQUETA
+     ======================================================================== */
+
+  .qr-info {
+    /* Ocupa el espacio restante */
+    flex: 1;
+
+    /* Layout vertical */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+
+    /* Sin bordes ni padding extra */
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+
+    /* Espaciado entre líneas */
+    gap: 0.15cm;
+  }
+
+  /* Nombre del Activo - Visible pero compacto */
+  .qr-title {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    color: #000 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+
+    /* Permitir hasta 2 líneas */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  /* Subtítulo (Serie o Departamento) */
+  .qr-subtitle {
+    font-size: 8pt !important;
+    color: #333 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+
+    /* Una sola línea */
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  /* Código de Inventario - MUY LEGIBLE */
+  .qr-id {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    font-family: 'Courier New', Consolas, monospace !important;
+    color: #000 !important;
+    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0.1cm 0.2cm !important;
+
+    /* Fondo gris claro para destacar */
+    background: #f0f0f0 !important;
+    border: 1px solid #ccc !important;
+    border-radius: 2px !important;
+
+    /* Texto centrado */
+    text-align: center !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* ========================================================================
+     OPTIMIZACIONES ADICIONALES
+     ======================================================================== */
+
+  /* Asegurar que los colores se impriman correctamente */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Evitar saltos de página no deseados */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid !important;
+  }
+
+  /* Optimizar espaciado entre secciones */
+  .section + .section {
+    margin-top: 0.5cm;
   }
 }
 
