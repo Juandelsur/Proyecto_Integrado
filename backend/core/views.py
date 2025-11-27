@@ -22,7 +22,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
@@ -261,10 +261,97 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     - PUT /api/usuarios/{id}/ - Actualizar un usuario completo
     - PATCH /api/usuarios/{id}/ - Actualizar parcialmente un usuario
     - DELETE /api/usuarios/{id}/ - Eliminar un usuario
+    - GET /api/usuarios/me/ - Obtener información del usuario autenticado (CRÍTICO PARA FRONTEND)
     """
     queryset = Usuario.objects.select_related('rol').all()
     serializer_class = UsuarioSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+    @extend_schema(
+        summary="Obtener información del usuario autenticado",
+        description="""
+        Endpoint CRÍTICO para el frontend: Retorna la información completa del usuario
+        que está haciendo la petición (basado en el token JWT).
+
+        Este endpoint es usado por el frontend para:
+        - Obtener el rol del usuario (Administrador, Técnico, Jefe de Departamento)
+        - Determinar permisos de UI (qué botones mostrar/ocultar)
+        - Mostrar información del perfil
+
+        SEGURIDAD:
+        - Solo requiere autenticación (IsAuthenticated)
+        - NO requiere ser Admin (cualquier usuario autenticado puede ver su propia info)
+        - El password NUNCA se devuelve (write_only en serializer)
+
+        Respuesta:
+        {
+            "id": 1,
+            "username": "admin",
+            "email": "admin@hospital.com",
+            "nombre_completo": "Administrador del Sistema",
+            "rol": {
+                "id_rol": 1,
+                "nombre_rol": "Administrador",
+                "descripcion": "Acceso total al sistema"
+            },
+            "is_active": true,
+            "is_staff": true,
+            "date_joined": "2025-01-15T10:30:00Z",
+            "last_login": "2025-01-20T14:45:00Z"
+        }
+        """,
+        tags=["Core", "Autenticación"],
+        responses={
+            200: UsuarioSerializer,
+            401: OpenApiResponse(description="No autenticado - Token inválido o ausente")
+        }
+    )
+    @action(
+        detail=False,
+        methods=['get'],
+        url_path='me',
+        permission_classes=[IsAuthenticated]  # Solo requiere autenticación, NO admin
+    )
+    def me(self, request):
+        """
+        Retorna la información del usuario autenticado.
+
+        CRÍTICO: Este endpoint es usado por el frontend para obtener el rol del usuario
+        y determinar qué permisos tiene en la interfaz.
+
+        Args:
+            request: Request con el usuario autenticado (request.user)
+
+        Returns:
+            Response: Datos del usuario serializado (sin password)
+
+        Example:
+            GET /api/usuarios/me/
+            Authorization: Bearer <token>
+
+            Response 200:
+            {
+                "id": 2,
+                "username": "tecnico1",
+                "email": "tecnico1@hospital.com",
+                "nombre_completo": "Juan Pérez",
+                "rol": {
+                    "id_rol": 2,
+                    "nombre_rol": "Técnico",
+                    "descripcion": "Gestión de activos"
+                },
+                "is_active": true,
+                "is_staff": false,
+                "date_joined": "2025-01-10T08:00:00Z",
+                "last_login": "2025-01-20T09:15:00Z"
+            }
+        """
+        # Obtener el usuario autenticado con su rol (optimización)
+        user = Usuario.objects.select_related('rol').get(pk=request.user.pk)
+
+        # Serializar y retornar
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
 
 
 # ==============================================================================
