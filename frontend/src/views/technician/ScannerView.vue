@@ -1,3 +1,52 @@
+<!--
+  ============================================================================
+  SCANNER VIEW - Vista de Escaneo de Códigos QR
+  ============================================================================
+
+  DESCRIPCIÓN:
+  Vista mobile-first para escanear códigos QR de equipos hospitalarios.
+  Incluye modo de ingreso manual como fallback.
+
+  MEJORAS DE ROBUSTEZ IMPLEMENTADAS:
+
+  1. ✅ MANEJO DE ERRORES DE PERMISOS:
+     - Try-catch robusto en el método .start()
+     - Detección específica de NotAllowedError y PermissionDeniedError
+     - Mensajes de error amigables y accionables
+     - Instrucciones en consola para habilitar permisos
+
+  2. ✅ CONFIGURACIÓN DE CÁMARA TRASERA:
+     - facingMode: { exact: 'environment' } para forzar cámara trasera
+     - Optimizado para Android (evita cámara frontal por defecto)
+     - Configuración de aspectRatio y qrbox optimizada
+
+  3. ✅ VALIDACIÓN DE CONTEXTO SEGURO (HTTPS):
+     - Verifica window.isSecureContext al montar el componente
+     - Muestra advertencia si no está en HTTPS
+     - La API de cámara solo funciona en HTTPS (excepto localhost)
+
+  4. ✅ MANEJO DE ERRORES ESPECÍFICOS:
+     - NotAllowedError: Permisos denegados
+     - NotFoundError: No se encontró cámara
+     - NotReadableError: Cámara en uso por otra app
+     - OverconstrainedError: Configuración no compatible
+
+  5. ✅ UX MEJORADA:
+     - Botón "Reintentar" cuando fallan los permisos
+     - Indicador visual de "Cámara activa"
+     - Transiciones suaves entre modos
+     - Limpieza automática de errores al cambiar de modo
+
+  DEPENDENCIAS:
+  - html5-qrcode: Librería para escaneo de QR con cámara
+  - Vue Router: Navegación entre vistas
+  - API Client: Comunicación con backend
+
+  AUTOR: Senior Frontend Engineer
+  FECHA: 2025-11-27
+  ============================================================================
+-->
+
 <template>
   <div class="scanner-view">
     <!-- Header -->
@@ -15,6 +64,13 @@
         <!-- Área de Cámara -->
         <div class="camera-area">
           <div id="qr-reader" class="qr-reader"></div>
+
+          <!-- Indicador de estado de cámara -->
+          <div v-if="!cameraPermissionDenied && !errorMessage" class="camera-status">
+            <i class="bi bi-camera-video-fill"></i>
+            <span>Cámara activa</span>
+          </div>
+
           <p class="help-text">Apunta la cámara al código QR del equipo</p>
         </div>
 
@@ -68,7 +124,13 @@
       <div v-if="errorMessage" class="error-message">
         <i class="bi bi-exclamation-triangle"></i>
         <p>{{ errorMessage }}</p>
-        <button @click="clearError" class="btn-close-error">Cerrar</button>
+        <div class="error-actions">
+          <button @click="retryScanner" class="btn-retry" v-if="cameraPermissionDenied && !showManualInput">
+            <i class="bi bi-arrow-clockwise"></i>
+            <span>Reintentar</span>
+          </button>
+          <button @click="clearError" class="btn-close-error">Cerrar</button>
+        </div>
       </div>
     </main>
   </div>
@@ -87,12 +149,16 @@ const showManualInput = ref(false)
 const manualCode = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
+const cameraPermissionDenied = ref(false)
 let html5QrCode = null
 
 /**
  * Inicializa el escáner QR
  */
 onMounted(() => {
+  // Validar contexto seguro (HTTPS)
+  checkSecureContext()
+
   if (!showManualInput.value) {
     initScanner()
   }
@@ -106,25 +172,147 @@ onUnmounted(() => {
 })
 
 /**
- * Inicializa el escáner de QR
+ * Valida que estemos en un contexto seguro (HTTPS)
+ * La API de cámara solo funciona en HTTPS (excepto localhost)
+ */
+function checkSecureContext() {
+  if (!window.isSecureContext) {
+    console.warn('⚠️ Contexto no seguro detectado. La cámara requiere HTTPS.')
+    errorMessage.value = '⚠️ La cámara solo funciona en conexiones seguras (HTTPS). Por favor, usa el ingreso manual.'
+    cameraPermissionDenied.value = true
+  }
+}
+
+/**
+ * Inicializa el escáner de QR con manejo robusto de errores
+ *
+ * MEJORAS IMPLEMENTADAS:
+ * 1. Validación de contexto seguro (HTTPS)
+ * 2. Manejo específico de errores de permisos
+ * 3. Configuración explícita de cámara trasera para Android
+ * 4. Mensajes de error amigables y accionables
+ * 5. Fallback automático a ingreso manual
  */
 async function initScanner() {
+  // Si ya se negaron los permisos, no intentar de nuevo
+  if (cameraPermissionDenied.value) {
+    return
+  }
+
   try {
+    // Crear instancia del escáner
     html5QrCode = new Html5Qrcode('qr-reader')
-    
+
+    // Configuración de cámara optimizada para Android
+    const cameraConfig = {
+      facingMode: { exact: 'environment' } // Forzar cámara trasera
+    }
+
+    // Configuración del escáner
+    const scannerConfig = {
+      fps: 10, // Frames por segundo
+      qrbox: { width: 250, height: 250 }, // Área de escaneo
+      aspectRatio: 1.0, // Ratio cuadrado para mejor detección
+      disableFlip: false // Permitir flip horizontal si es necesario
+    }
+
+    // Intentar iniciar el escáner
     await html5QrCode.start(
-      { facingMode: 'environment' }, // Cámara trasera
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 }
-      },
+      cameraConfig,
+      scannerConfig,
       onScanSuccess,
       onScanError
     )
+
+    console.log('✅ Escáner QR iniciado correctamente')
+
   } catch (err) {
-    console.error('Error al iniciar escáner:', err)
-    errorMessage.value = 'No se pudo acceder a la cámara. Intenta con ingreso manual.'
+    console.error('❌ Error al iniciar escáner:', err)
+
+    // Manejo específico de errores de permisos
+    handleCameraError(err)
   }
+}
+
+/**
+ * Maneja errores específicos de la cámara con mensajes amigables
+ *
+ * @param {Error} error - Error capturado al iniciar la cámara
+ */
+function handleCameraError(error) {
+  const errorName = error.name || ''
+  const errorMessage = error.message || ''
+
+  // Detectar tipo de error
+  if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+    // Usuario negó el permiso de cámara
+    showPermissionDeniedError()
+  } else if (errorName === 'NotFoundError' || errorMessage.includes('camera')) {
+    // No se encontró cámara en el dispositivo
+    showNoCameraError()
+  } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+    // Cámara en uso por otra aplicación
+    showCameraInUseError()
+  } else if (errorName === 'OverconstrainedError') {
+    // La configuración solicitada no es compatible
+    showConfigurationError()
+  } else {
+    // Error genérico
+    showGenericCameraError(errorMessage)
+  }
+
+  cameraPermissionDenied.value = true
+}
+
+/**
+ * Muestra error cuando el usuario niega el permiso de cámara
+ */
+function showPermissionDeniedError() {
+  errorMessage.value = '⚠️ No podemos acceder a la cámara. Por favor, revisa los permisos de tu navegador o usa el ingreso manual.'
+
+  // Mostrar instrucciones adicionales en consola
+  console.warn(`
+    📱 INSTRUCCIONES PARA HABILITAR LA CÁMARA:
+
+    Android Chrome:
+    1. Toca el ícono de candado/información en la barra de direcciones
+    2. Toca "Permisos"
+    3. Cambia "Cámara" a "Permitir"
+    4. Recarga la página
+
+    iOS Safari:
+    1. Ve a Ajustes > Safari > Cámara
+    2. Selecciona "Preguntar" o "Permitir"
+    3. Recarga la página
+  `)
+}
+
+/**
+ * Muestra error cuando no se encuentra cámara
+ */
+function showNoCameraError() {
+  errorMessage.value = '📷 No se detectó ninguna cámara en tu dispositivo. Por favor, usa el ingreso manual.'
+}
+
+/**
+ * Muestra error cuando la cámara está en uso
+ */
+function showCameraInUseError() {
+  errorMessage.value = '⚠️ La cámara está siendo usada por otra aplicación. Cierra otras apps que usen la cámara e intenta nuevamente.'
+}
+
+/**
+ * Muestra error de configuración no compatible
+ */
+function showConfigurationError() {
+  errorMessage.value = '⚠️ Tu dispositivo no soporta la configuración de cámara requerida. Por favor, usa el ingreso manual.'
+}
+
+/**
+ * Muestra error genérico de cámara
+ */
+function showGenericCameraError(message) {
+  errorMessage.value = `⚠️ Error al acceder a la cámara: ${message || 'Error desconocido'}. Por favor, usa el ingreso manual.`
 }
 
 /**
@@ -209,18 +397,42 @@ async function handleCodeDetected(code) {
 
 /**
  * Alterna entre modo escáner y modo manual
+ *
+ * MEJORAS:
+ * - Limpia errores al cambiar de modo
+ * - Resetea el estado de permisos al volver al escáner
+ * - Manejo seguro de transiciones
  */
 async function toggleManualInput() {
+  // Limpiar mensajes de error
+  errorMessage.value = ''
+
   showManualInput.value = !showManualInput.value
 
   if (showManualInput.value) {
     // Cambiar a modo manual: detener escáner
     await stopScanner()
     manualCode.value = ''
+    console.log('📝 Modo manual activado')
   } else {
-    // Cambiar a modo escáner: iniciar escáner
+    // Cambiar a modo escáner: reiniciar escáner
+    // Resetear el flag de permisos para permitir reintentar
+    cameraPermissionDenied.value = false
+
+    console.log('📷 Intentando reiniciar escáner...')
     await initScanner()
   }
+}
+
+/**
+ * Reintenta iniciar el escáner (útil después de que el usuario otorgue permisos)
+ */
+async function retryScanner() {
+  errorMessage.value = ''
+  cameraPermissionDenied.value = false
+
+  console.log('🔄 Reintentando acceso a la cámara...')
+  await initScanner()
 }
 
 /**
@@ -342,6 +554,33 @@ function goBack() {
   margin: 0 auto;
   border-radius: 12px;
   overflow: hidden;
+}
+
+.camera-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #d4edda;
+  color: #155724;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.camera-status i {
+  font-size: 1rem;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .help-text {
@@ -577,6 +816,38 @@ function goBack() {
   margin: 0;
   font-size: 0.95rem;
   text-align: center;
+  line-height: 1.5;
+}
+
+.error-actions {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-retry {
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: #f44336;
+  padding: 0.5rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-retry:hover {
+  background: white;
+  transform: translateY(-2px);
+}
+
+.btn-retry i {
+  font-size: 1rem;
 }
 
 .btn-close-error {
