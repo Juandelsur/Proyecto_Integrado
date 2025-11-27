@@ -1,21 +1,37 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // ========================================================================
+    // RUTA RAÍZ - REDIRIGE AL LOGIN
+    // ========================================================================
     {
       path: '/',
-      name: 'home',
-      component: HomeView,
+      redirect: '/login'
     },
+    // ========================================================================
+    // RUTA DE LOGIN
+    // ========================================================================
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/LoginView.vue'),
+      meta: {
+        title: 'Iniciar Sesión'
+      }
+    },
+    // ========================================================================
+    // RUTA DE HOME (DASHBOARD PRINCIPAL)
+    // ========================================================================
+    {
+      path: '/home',
+      name: 'home',
+      component: () => import('../views/HomeView.vue'),
+      meta: {
+        title: 'Dashboard',
+        requiresAuth: true
+      }
     },
     // ========================================================================
     // RUTAS DE ACTIVOS (ADMIN)
@@ -138,17 +154,6 @@ const router = createRouter({
         title: 'Configuración',
         requiresAuth: true
       }
-    },
-    // ========================================================================
-    // RUTA DE LOGIN
-    // ========================================================================
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/LoginView.vue'),
-      meta: {
-        title: 'Iniciar Sesión'
-      }
     }
   ],
 })
@@ -178,7 +183,7 @@ router.beforeEach((to, from, next) => {
     if (!authStore[permission]) {
       // Redirigir a home si no tiene el permiso
       alert('❌ No tienes permisos para acceder a esta página.')
-      next({ name: 'home' })
+      next('/home')
       return
     }
   }
@@ -189,12 +194,7 @@ router.beforeEach((to, from, next) => {
     if (authStore.userRole !== requiredRole) {
       // Redirigir según el rol del usuario
       alert('❌ Esta página es solo para técnicos.')
-
-      if (authStore.isAdmin || authStore.isJefe) {
-        next({ name: 'home' })
-      } else {
-        next({ name: 'home' })
-      }
+      next('/home')
       return
     }
   }
