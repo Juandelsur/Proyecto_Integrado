@@ -1,22 +1,19 @@
 <template>
   <div class="success-view">
-    <!-- Header -->
-    <header class="success-header">
-      <h1 class="header-title">Registro Exitoso</h1>
-    </header>
-
     <!-- Contenido Principal -->
     <main class="success-content">
       <div class="success-card">
-        <!-- Icono de Éxito -->
-        <div class="success-icon-container">
-          <i class="bi bi-check-circle-fill success-icon"></i>
+        <!-- Icono de Éxito con Círculo Verde -->
+        <div class="success-icon-wrapper">
+          <div class="success-icon-circle">
+            <i class="bi bi-check-lg success-icon"></i>
+          </div>
         </div>
 
         <!-- Mensaje -->
-        <h2 class="success-title">¡Registro Confirmado!</h2>
+        <h2 class="success-title">Registro Exitoso</h2>
         <p class="success-message">
-          El movimiento del equipo ha sido registrado exitosamente.
+          El equipo informático ha sido registrado correctamente en el sistema
         </p>
 
         <!-- Información del Activo (si está disponible) -->
@@ -26,24 +23,19 @@
             <span class="summary-value">{{ asset.codigo_inventario }}</span>
           </div>
           <div class="summary-row">
-            <span class="summary-label">Equipo:</span>
-            <span class="summary-value">{{ asset.marca }} {{ asset.modelo }}</span>
+            <span class="summary-label">Hora:</span>
+            <span class="summary-value">{{ currentDateTime }}</span>
           </div>
-          <div v-if="observaciones" class="summary-row">
-            <span class="summary-label">Observaciones:</span>
-            <span class="summary-value">{{ observaciones }}</span>
+          <div class="summary-row">
+            <span class="summary-label">Técnico:</span>
+            <span class="summary-value">{{ technicianName }}</span>
           </div>
         </div>
 
-        <!-- Botones de Acción -->
+        <!-- Botón de Acción -->
         <div class="action-buttons">
-          <button @click="scanAnother" class="btn-primary">
-            <i class="bi bi-qr-code-scan"></i>
-            <span>Escanear Otro Equipo</span>
-          </button>
-
-          <button @click="goHome" class="btn-secondary">
-            <i class="bi bi-house"></i>
+          <button @click="goHome" class="btn-primary">
+            <i class="bi bi-house-door"></i>
             <span>Volver al Inicio</span>
           </button>
         </div>
@@ -53,14 +45,38 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Estado
 const asset = ref(null)
 const observaciones = ref('')
+
+/**
+ * Obtiene la fecha y hora actual formateada
+ */
+const currentDateTime = computed(() => {
+  const now = new Date()
+  const day = now.getDate().toString().padStart(2, '0')
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+  const month = months[now.getMonth()]
+  const year = now.getFullYear()
+  const hours = now.getHours().toString().padStart(2, '0')
+  const minutes = now.getMinutes().toString().padStart(2, '0')
+
+  return `${hours}:${minutes} - ${day} ${month} ${year}`
+})
+
+/**
+ * Obtiene el nombre del técnico actual
+ */
+const technicianName = computed(() => {
+  return authStore.user?.username || 'Técnico'
+})
 
 /**
  * Obtiene los datos del state de la navegación
@@ -71,13 +87,6 @@ onMounted(() => {
     observaciones.value = history.state.observaciones
   }
 })
-
-/**
- * Vuelve al escáner para registrar otro equipo
- */
-function scanAnother() {
-  router.push({ name: 'scan-qr' })
-}
 
 /**
  * Vuelve al home del técnico
@@ -96,23 +105,7 @@ function goHome() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
-}
-
-/* ============================================================================
-   HEADER
-   ============================================================================ */
-
-.success-header {
-  padding: 1.5rem;
-  text-align: center;
-}
-
-.header-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: white;
-  margin: 0;
+  background: #f5f7fa;
 }
 
 /* ============================================================================
@@ -133,7 +126,7 @@ function goHome() {
   background: white;
   border-radius: 20px;
   padding: 3rem 2rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
 
@@ -141,8 +134,10 @@ function goHome() {
    SUCCESS ICON
    ============================================================================ */
 
-.success-icon-container {
+.success-icon-wrapper {
   margin-bottom: 2rem;
+  display: flex;
+  justify-content: center;
   animation: scaleIn 0.5s ease;
 }
 
@@ -157,9 +152,20 @@ function goHome() {
   }
 }
 
+.success-icon-circle {
+  width: 120px;
+  height: 120px;
+  background: #d4edda;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .success-icon {
-  font-size: 5rem;
-  color: #4caf50;
+  font-size: 3.5rem;
+  color: #28a745;
+  font-weight: bold;
 }
 
 /* ============================================================================
@@ -169,15 +175,18 @@ function goHome() {
 .success-title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #0d47a1;
+  color: #1a1a1a;
   margin: 0 0 1rem 0;
 }
 
 .success-message {
   font-size: 1rem;
   color: #666;
-  margin: 0 0 2rem 0;
+  margin: 0 0 2.5rem 0;
   line-height: 1.6;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* ============================================================================
@@ -188,15 +197,15 @@ function goHome() {
   background: #f5f7fa;
   border-radius: 12px;
   padding: 1.5rem;
-  margin-bottom: 2rem;
+  margin-bottom: 2.5rem;
   text-align: left;
 }
 
 .summary-row {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 0.75rem 0;
+  align-items: center;
+  padding: 0.875rem 0;
   border-bottom: 1px solid #e0e0e0;
 }
 
@@ -205,8 +214,8 @@ function goHome() {
 }
 
 .summary-label {
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 400;
   color: #666;
   flex-shrink: 0;
   margin-right: 1rem;
@@ -214,8 +223,8 @@ function goHome() {
 
 .summary-value {
   font-size: 0.95rem;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: #1a1a1a;
   text-align: right;
   word-break: break-word;
 }
@@ -231,10 +240,10 @@ function goHome() {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  background: #0d47a1;
   border: none;
   color: white;
-  padding: 1rem 1.5rem;
+  padding: 1rem 2rem;
   border-radius: 12px;
   font-size: 1rem;
   font-weight: 600;
@@ -245,38 +254,16 @@ function goHome() {
   justify-content: center;
   gap: 0.75rem;
   box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
+  width: 100%;
 }
 
 .btn-primary:hover {
+  background: #1565c0;
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(13, 71, 161, 0.4);
 }
 
 .btn-primary i {
-  font-size: 1.25rem;
-}
-
-.btn-secondary {
-  background: white;
-  border: 2px solid #0d47a1;
-  color: #0d47a1;
-  padding: 1rem 1.5rem;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-}
-
-.btn-secondary:hover {
-  background: #f5f7fa;
-}
-
-.btn-secondary i {
   font-size: 1.25rem;
 }
 
@@ -293,13 +280,13 @@ function goHome() {
     font-size: 2rem;
   }
 
-  .action-buttons {
-    flex-direction: row;
+  .success-icon-circle {
+    width: 140px;
+    height: 140px;
   }
 
-  .btn-primary,
-  .btn-secondary {
-    flex: 1;
+  .success-icon {
+    font-size: 4rem;
   }
 }
 </style>
