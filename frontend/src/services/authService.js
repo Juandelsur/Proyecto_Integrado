@@ -12,13 +12,13 @@ import apiClient from './api'
 const authService = {
   /**
    * Login: Obtiene tokens JWT
-   * 
+   *
    * @param {string} username - Nombre de usuario
    * @param {string} password - Contraseña
    * @returns {Promise<{access: string, refresh: string}>}
    */
   async login(username, password) {
-    const response = await apiClient.post('/api/token/', {
+    const response = await apiClient.post('/api/auth/token/', {
       username,
       password
     })
@@ -27,12 +27,12 @@ const authService = {
 
   /**
    * Refresh: Renueva el access token usando el refresh token
-   * 
+   *
    * @param {string} refreshToken - Refresh token
    * @returns {Promise<{access: string}>}
    */
   async refreshToken(refreshToken) {
-    const response = await apiClient.post('/api/token/refresh/', {
+    const response = await apiClient.post('/api/auth/token/refresh/', {
       refresh: refreshToken
     })
     return response.data
@@ -55,13 +55,13 @@ const authService = {
 
   /**
    * Verifica si el token es válido
-   * 
+   *
    * @param {string} token - Token JWT
    * @returns {Promise<boolean>}
    */
   async verifyToken(token) {
     try {
-      await apiClient.post('/api/token/verify/', { token })
+      await apiClient.post('/api/auth/token/verify/', { token })
       return true
     } catch (error) {
       return false

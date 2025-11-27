@@ -179,11 +179,11 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function login(username, password) {
     try {
-      const response = await apiClient.post('/api/token/', {
+      const response = await apiClient.post('/api/auth/token/', {
         username,
         password
       })
-      
+
       const { access, refresh } = response.data
       
       // Guardar tokens

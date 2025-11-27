@@ -107,7 +107,7 @@ async function handleLogin() {
 
   try {
     // 1. Llamar al endpoint de autenticación
-    const loginResponse = await apiClient.post('/api/token/', {
+    const loginResponse = await apiClient.post('/api/auth/token/', {
       username: email.value,
       password: password.value
     })
