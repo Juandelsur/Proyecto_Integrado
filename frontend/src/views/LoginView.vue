@@ -16,17 +16,17 @@
         <form @submit.prevent="handleLogin" class="login-form">
           <!-- Campo Usuario -->
           <div class="form-group">
-            <label for="email" class="form-label">Usuario</label>
+            <label for="username" class="form-label">Nombre de Usuario</label>
             <div class="input-group">
               <span class="input-icon">
                 <i class="bi bi-person-fill"></i>
               </span>
               <input
-                id="email"
-                v-model="email"
+                id="username"
+                v-model="username"
                 type="text"
                 class="form-control"
-                placeholder="tu@email.com"
+                placeholder="Ej: tecnico1, admin"
                 required
                 autocomplete="username"
                 :disabled="loading"
@@ -93,7 +93,7 @@ const router = useRouter()
 const route = useRoute()
 
 // Estado del formulario
-const email = ref('')
+const username = ref('')
 const password = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
@@ -105,60 +105,100 @@ async function handleLogin() {
   loading.value = true
   errorMessage.value = ''
 
+  console.log('🔐 Iniciando login...')
+  console.log('📝 Username:', username.value)
+
   try {
     // 1. Llamar al endpoint de autenticación
+    console.log('📡 POST /api/auth/token/')
     const loginResponse = await apiClient.post('/api/auth/token/', {
-      username: email.value,
+      username: username.value,  // ✅ Usar username (no email)
       password: password.value
     })
+
+    console.log('✅ Login exitoso - Tokens recibidos')
 
     // 2. Guardar tokens en localStorage
     const { access, refresh } = loginResponse.data
     localStorage.setItem('access_token', access)
     localStorage.setItem('refresh_token', refresh)
+    console.log('💾 Tokens guardados en localStorage')
 
     // 3. Obtener información del usuario (incluyendo rol)
+    console.log('📡 GET /api/usuarios/me/')
     const userResponse = await apiClient.get('/api/usuarios/me/')
     const userData = userResponse.data
+
+    console.log('👤 Datos del usuario:', userData)
+    console.log('🎭 Rol detectado:', userData.rol?.nombre_rol)
 
     // 4. Guardar información del usuario
     localStorage.setItem('user', JSON.stringify(userData))
 
-    // 5. Determinar redirección según el rol
-    const rolNombre = userData.rol?.nombre_rol
+    // 5. Determinar redirección según el rol (LÓGICA ROBUSTA)
+    const rolNombre = userData.rol?.nombre_rol || ''
+    const rolNormalizado = rolNombre.toLowerCase().trim()
 
-    let redirectPath = '/dashboard' // Default
+    console.log('🔍 Rol normalizado:', rolNormalizado)
 
-    if (rolNombre === 'Técnico') {
+    let redirectPath = '/' // Fallback por defecto
+
+    // Lógica de redirección robusta con normalización
+    if (rolNormalizado.includes('técnico') || rolNormalizado.includes('tecnico')) {
       redirectPath = '/tecnico/home'
-    } else if (rolNombre === 'Administrador' || rolNombre === 'Jefe de Departamento') {
-      redirectPath = '/dashboard'
+      console.log('🎯 Redirigiendo a: /tecnico/home (Técnico)')
+    } else if (rolNormalizado.includes('administrador') || rolNormalizado.includes('admin')) {
+      redirectPath = '/inventario'
+      console.log('🎯 Redirigiendo a: /inventario (Administrador)')
+    } else if (rolNormalizado.includes('jefe')) {
+      redirectPath = '/home'
+      console.log('🎯 Redirigiendo a: /home (Jefe de Departamento)')
+    } else {
+      // Fallback: Si no se puede determinar el rol
+      console.warn('⚠️ No se pudo determinar el rol del usuario')
+      errorMessage.value = '⚠️ No se pudo determinar el perfil del usuario. Contacta al administrador.'
+
+      // Limpiar tokens y no redirigir
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+      return
     }
 
     // 6. Redirigir (usar query redirect si existe)
     const finalRedirect = route.query.redirect || redirectPath
-    router.push(finalRedirect)
+    console.log('🚀 Redirección final:', finalRedirect)
+
+    await router.push(finalRedirect)
+    console.log('✅ Redirección completada')
 
   } catch (error) {
     // Manejo de errores
+    console.error('❌ Error en login:', error)
+
     if (error.response) {
       // Error del servidor
+      console.error('📛 Status:', error.response.status)
+      console.error('📛 Data:', error.response.data)
+
       if (error.response.status === 401) {
-        errorMessage.value = 'Usuario o contraseña incorrectos'
+        errorMessage.value = '❌ Usuario o contraseña incorrectos'
       } else if (error.response.status === 400) {
-        errorMessage.value = 'Por favor, completa todos los campos'
+        errorMessage.value = '⚠️ Por favor, completa todos los campos correctamente'
+      } else if (error.response.status === 404) {
+        errorMessage.value = '❌ Endpoint no encontrado. Verifica la configuración del backend'
       } else {
-        errorMessage.value = 'Error del servidor. Intenta de nuevo más tarde'
+        errorMessage.value = '❌ Error del servidor. Intenta de nuevo más tarde'
       }
     } else if (error.request) {
       // No hubo respuesta del servidor
-      errorMessage.value = 'No se pudo conectar con el servidor. Verifica tu conexión'
+      console.error('📛 No response from server')
+      errorMessage.value = '🔌 No se pudo conectar con el servidor. Verifica tu conexión'
     } else {
       // Error al configurar la petición
-      errorMessage.value = 'Error inesperado. Por favor, intenta de nuevo'
+      console.error('📛 Request setup error:', error.message)
+      errorMessage.value = '❌ Error inesperado. Por favor, intenta de nuevo'
     }
-
-    console.error('Error en login:', error)
   } finally {
     loading.value = false
   }
