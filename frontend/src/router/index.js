@@ -128,9 +128,9 @@ const router = createRouter({
         {
           path: 'history',
           name: 'technician-history',
-          component: () => import('../views/technician/HistoryView.vue'),
+          component: () => import('../views/technician/TecnicoHistorialView.vue'),
           meta: {
-            title: 'Histórico'
+            title: 'Historial de Movimientos'
           }
         },
         {
