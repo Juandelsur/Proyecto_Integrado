@@ -102,14 +102,25 @@
     </v-expansion-panels>
 
     <!-- ========================================================================
+         INFORMACIÓN DE RESULTADOS
+         ======================================================================== -->
+    <div v-if="!loading && movimientosFiltrados.length > 0" class="mb-3">
+      <v-chip size="small" variant="outlined" prepend-icon="mdi-information-outline">
+        {{ totalResultados }} movimiento{{ totalResultados !== 1 ? 's' : '' }} encontrado{{ totalResultados !== 1 ? 's' : '' }}
+      </v-chip>
+    </div>
+
+    <!-- ========================================================================
          TABLA DE RESULTADOS (DISEÑO MÓVIL CON TARJETAS DE FILA)
          ======================================================================== -->
     <v-data-table
       :headers="headers"
       :items="movimientosFiltrados"
       :loading="loading"
-      :items-per-page="15"
+      :items-per-page="itemsPerPage"
+      :page="currentPage"
       class="elevation-1"
+      @update:page="currentPage = $event"
     >
       <!-- Loading State -->
       <template v-slot:loading>
@@ -209,6 +220,10 @@ const authStore = useAuthStore()
 const loading = ref(false)
 const movimientos = ref([])
 
+// Paginación
+const currentPage = ref(1)
+const itemsPerPage = ref(15)
+
 const filtros = ref({
   busqueda: '',
   tipoMovimiento: 'Todos',
@@ -258,6 +273,10 @@ const filtrosActivos = computed(() => {
   if (filtros.value.tipoMovimiento !== 'Todos') count++
   if (filtros.value.rango !== 'todo') count++
   return count
+})
+
+const totalResultados = computed(() => {
+  return movimientosFiltrados.value.length
 })
 
 const movimientosFiltrados = computed(() => {
@@ -325,6 +344,9 @@ async function fetchMovimientos() {
 // ============================================================================
 
 function aplicarFiltros() {
+  // Resetear a la primera página al aplicar filtros
+  currentPage.value = 1
+
   // Simular carga
   loading.value = true
   setTimeout(() => {
@@ -338,6 +360,9 @@ function limpiarFiltros() {
     tipoMovimiento: 'Todos',
     rango: 'todo'
   }
+
+  // Resetear a la primera página al limpiar filtros
+  currentPage.value = 1
 }
 
 // ============================================================================
