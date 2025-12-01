@@ -43,14 +43,12 @@
          ESTADO 1: SCANNING (Interfaz de Captura)
          ======================================================================== -->
     <div v-if="uiState === 'SCANNING'" class="scanning-state">
-      <!-- Simulación de Cámara -->
-      <v-card color="black" height="300" class="mb-4 d-flex align-center justify-center">
-        <div class="text-center">
-          <v-icon size="80" color="white">mdi-camera</v-icon>
-          <p class="text-white mt-4 text-h6">Escáner Activo</p>
-          <p class="text-grey-lighten-1">Apunta al código QR</p>
-        </div>
-      </v-card>
+      <!-- Escáner QR Real -->
+      <QRScanner
+        @scan-success="handleQRScanSuccess"
+        @scan-error="handleQRScanError"
+        class="mb-4"
+      />
 
       <!-- Input Manual -->
       <v-text-field
@@ -558,6 +556,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/services/api'
 import QRCode from 'qrcode'
+import QRScanner from '@/components/QRScanner.vue'
 
 // ============================================================================
 // COMPOSABLES
@@ -711,6 +710,34 @@ async function transitionToLocation(code) {
 // ============================================================================
 // MÉTODOS - SCANNING STATE
 // ============================================================================
+
+/**
+ * Maneja el escaneo exitoso del QR Scanner
+ * @param {Object} result - { decodedText, decodedResult }
+ */
+function handleQRScanSuccess({ decodedText }) {
+  console.log('📸 QR Escaneado:', decodedText)
+
+  const code = decodedText.trim().toUpperCase()
+
+  // Evaluar prefijo según formato del backend
+  if (code.startsWith('INV-')) {
+    transitionToAsset(code)
+  } else if (code.startsWith('LOC-')) {
+    transitionToLocation(code)
+  } else {
+    showErrorMessage('Código QR inválido. Debe comenzar con INV- (Activo) o LOC- (Ubicación)')
+  }
+}
+
+/**
+ * Maneja errores del QR Scanner
+ * @param {Object} error - { error, details }
+ */
+function handleQRScanError({ error, details }) {
+  console.error('❌ Error en escáner:', error, details)
+  // No mostramos error al usuario porque puede reintentar desde el componente
+}
 
 function handleManualSubmit() {
   const code = manualCode.value.trim().toUpperCase()
