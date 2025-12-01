@@ -268,13 +268,25 @@ async function iniciarCamara() {
     console.log('✅ Delay completado')
 
     // ========================================================================
-    // PASO 6: Crear instancia de Html5Qrcode
+    // PASO 6: Limpiar instancia previa si existe
+    // ========================================================================
+    if (html5QrCode) {
+      try {
+        await html5QrCode.stop()
+        html5QrCode.clear()
+      } catch (e) {
+        console.warn('⚠️ Error limpiando instancia previa:', e.message)
+      }
+    }
+
+    // ========================================================================
+    // PASO 7: Crear instancia de Html5Qrcode
     // ========================================================================
     html5QrCode = new Html5Qrcode('reader')
     console.log('✅ Instancia Html5Qrcode creada')
 
     // ========================================================================
-    // PASO 7: Configuración optimizada para móviles
+    // PASO 8: Configuración optimizada para móviles
     // ========================================================================
     const config = {
       fps: 10,
@@ -284,17 +296,53 @@ async function iniciarCamara() {
     }
 
     // ========================================================================
-    // PASO 8: INICIAR CÁMARA - facingMode: "environment" para cámara trasera
+    // PASO 9: INICIAR CÁMARA - Intentar cámara trasera, fallback a cualquier cámara
     // ========================================================================
-    console.log('📷 Solicitando acceso a cámara trasera...')
+    console.log('📷 Solicitando acceso a cámara...')
     scannerState.value = 'REQUESTING_CAMERA'
 
-    await html5QrCode.start(
-      { facingMode: 'environment' }, // Cámara trasera
-      config,
-      onQRCodeSuccess,
-      onQRCodeError
-    )
+    try {
+      // Primero intentar con cámara trasera (móviles)
+      await html5QrCode.start(
+        { facingMode: 'environment' },
+        config,
+        onQRCodeSuccess,
+        onQRCodeError
+      )
+      console.log('✅ Cámara trasera iniciada')
+    } catch (envError) {
+      console.warn('⚠️ Cámara trasera no disponible, intentando cámara frontal...')
+
+      // Fallback: usar cualquier cámara disponible (PC/laptop)
+      try {
+        await html5QrCode.start(
+          { facingMode: 'user' },
+          config,
+          onQRCodeSuccess,
+          onQRCodeError
+        )
+        console.log('✅ Cámara frontal iniciada')
+      } catch (userError) {
+        console.warn('⚠️ Cámara frontal no disponible, buscando cualquier cámara...')
+
+        // Último intento: obtener lista de cámaras y usar la primera
+        const cameras = await Html5Qrcode.getCameras()
+        if (cameras && cameras.length > 0) {
+          const cameraId = cameras[0].id
+          console.log('📷 Usando cámara:', cameras[0].label || cameraId)
+
+          await html5QrCode.start(
+            cameraId,
+            config,
+            onQRCodeSuccess,
+            onQRCodeError
+          )
+          console.log('✅ Cámara iniciada por ID')
+        } else {
+          throw new Error('No se encontró ninguna cámara disponible en este dispositivo.')
+        }
+      }
+    }
 
     // ========================================================================
     // ÉXITO: Cámara activa - Ocultar overlay

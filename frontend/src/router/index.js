@@ -171,6 +171,18 @@ const router = createRouter({
         requiresAuth: true
       }
     },
+    // ========================================================================
+    // RUTA DE PRUEBA - QR SCANNER DEMO (SIN AUTENTICACIÓN PARA TESTING)
+    // ========================================================================
+    {
+      path: '/qr-scanner-demo',
+      name: 'qr-scanner-demo',
+      component: () => import('../views/technician/QRScannerDemoView.vue'),
+      meta: {
+        title: 'QR Scanner Demo',
+        requiresAuth: false // Sin auth para pruebas
+      }
+    },
     {
       path: '/confirmar-equipo/:id',
       name: 'confirm-asset',

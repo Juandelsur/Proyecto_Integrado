@@ -554,7 +554,7 @@
  */
 
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/services/api'
 import QRCode from 'qrcode'
@@ -564,6 +564,7 @@ import QRCode from 'qrcode'
 // ============================================================================
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // ============================================================================
@@ -989,6 +990,18 @@ onMounted(async () => {
     fetchUltimosMovimientos(),
     fetchTiposEquipo()
   ])
+
+  // Procesar query params si vienen de QRScannerDemoView
+  const ubicacionCode = route.query.ubicacion
+  const activoCode = route.query.activo
+
+  if (ubicacionCode) {
+    console.log('📍 Query param ubicacion detectado:', ubicacionCode)
+    await transitionToLocation(ubicacionCode)
+  } else if (activoCode) {
+    console.log('📦 Query param activo detectado:', activoCode)
+    await transitionToAsset(activoCode)
+  }
 })
 </script>
 

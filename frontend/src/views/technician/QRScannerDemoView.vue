@@ -43,8 +43,8 @@
     <!-- Instrucciones -->
     <div class="instructions">
       <div class="info-icon">ℹ️</div>
-      <p class="mt-2">Apunta la cámara al código QR del activo</p>
-      <p class="text-caption">El código debe comenzar con INV-</p>
+      <p class="mt-2">Apunta la cámara al código QR</p>
+      <p class="text-caption">INV-XXXX (Activo) o LOC-XXXX (Ubicación)</p>
     </div>
 
     <!-- Último código escaneado -->
@@ -103,20 +103,23 @@ const lastScannedCode = ref(null)
 
 /**
  * Maneja el evento de escaneo exitoso
+ * Soporta dos tipos de códigos:
+ * - INV-XXXX: Códigos de activos
+ * - LOC-XXXX: Códigos de ubicaciones
  */
 async function handleScanSuccess({ decodedText }) {
   console.log('✅ Código QR escaneado:', decodedText)
 
   lastScannedCode.value = decodedText
 
-  // Validar que el código comience con INV-
-  if (!decodedText.startsWith('INV-')) {
-    showErrorMessage('Código inválido. Debe comenzar con INV-')
-    return
+  // Evaluar prefijo según formato del backend
+  if (decodedText.startsWith('INV-')) {
+    await buscarActivo(decodedText)
+  } else if (decodedText.startsWith('LOC-')) {
+    await buscarUbicacion(decodedText)
+  } else {
+    showErrorMessage('Código inválido. Debe comenzar con INV- (Activo) o LOC- (Ubicación)')
   }
-
-  // Buscar el activo en el backend
-  await buscarActivo(decodedText)
 }
 
 /**
@@ -155,6 +158,40 @@ async function buscarActivo(codigo) {
   } catch (error) {
     console.error('Error al buscar activo:', error)
     showErrorMessage('Error al buscar el activo. Por favor, intenta de nuevo.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+/**
+ * Busca la ubicación en el backend por código QR
+ */
+async function buscarUbicacion(codigo) {
+  isLoading.value = true
+
+  try {
+    const response = await apiClient.get('/api/ubicaciones/', {
+      params: { search: codigo }
+    })
+
+    const ubicaciones = response.data.results || response.data
+
+    if (ubicaciones.length === 0) {
+      showErrorMessage(`No se encontró la ubicación con código: ${codigo}`)
+      return
+    }
+
+    const ubicacion = ubicaciones[0]
+
+    // Redirigir a la vista ScannerView en estado VIEW_LOCATION
+    // Pasamos el código de ubicación como query param
+    router.push({
+      name: 'scan-qr',
+      query: { ubicacion: ubicacion.codigo_qr || codigo }
+    })
+  } catch (error) {
+    console.error('Error al buscar ubicación:', error)
+    showErrorMessage('Error al buscar la ubicación. Por favor, intenta de nuevo.')
   } finally {
     isLoading.value = false
   }
