@@ -295,4 +295,76 @@ ALLOWED_HOSTS=tu-backend.onrender.com,tu-frontend.vercel.app
 - [ ] Token no ha expirado (menos de 1 hora desde login)
 - [ ] Logs de Render no muestran errores de CORS/CSRF
 
+---
+
+## 🛠️ HERRAMIENTAS DE DIAGNÓSTICO
+
+### **Script de diagnóstico automático**
+
+He creado un script que verifica toda la configuración automáticamente.
+
+**Ejecutar en local:**
+```bash
+cd backend
+python diagnostico_403.py
+```
+
+**Ejecutar en Render (via Shell):**
+1. Ve a Render Dashboard → Tu servicio → Shell
+2. Ejecuta:
+   ```bash
+   python diagnostico_403.py
+   ```
+
+El script verificará:
+- ✅ Configuración de CORS y CSRF
+- ✅ Configuración de JWT
+- ✅ Estado de usuarios (is_active, roles)
+- ✅ Permisos de DRF
+
+---
+
+## 🔧 CONFIGURACIÓN RECOMENDADA PARA RENDER
+
+### **Variables de entorno mínimas requeridas:**
+
+```bash
+# SEGURIDAD
+SECRET_KEY=tu-clave-secreta-generada
+DEBUG=False
+
+# HOSTS Y ORÍGENES
+ALLOWED_HOSTS=tu-backend.onrender.com
+CSRF_TRUSTED_ORIGINS=https://tu-backend.onrender.com,https://tu-frontend.vercel.app
+CORS_ALLOWED_ORIGINS=https://tu-frontend.vercel.app
+CORS_ALLOW_ALL=False
+
+# BASE DE DATOS (Render PostgreSQL)
+DATABASE_URL=postgresql://user:password@host/database
+
+# JWT
+JWT_ACCESS_TOKEN_LIFETIME=480
+JWT_REFRESH_TOKEN_LIFETIME=1440
+```
+
+**Reemplaza:**
+- `tu-backend.onrender.com` → Tu URL de Render
+- `tu-frontend.vercel.app` → Tu URL de Vercel
+- `tu-clave-secreta-generada` → Genera con: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`
+
+---
+
+## 📞 SOPORTE ADICIONAL
+
+Si después de seguir todos los pasos el error persiste:
+
+1. **Ejecuta el script de diagnóstico** y comparte el output completo
+2. **Revisa los logs de Render** y comparte los últimos 50 líneas
+3. **Verifica en Network (F12)** y comparte:
+   - Request Headers completos
+   - Response Headers completos
+   - Response Body del error 403
+
+Con esta información podré identificar el problema exacto.
+
 
