@@ -1,6 +1,6 @@
 <!--
   ============================================================================
-  SCANNER VIEW - CENTRO DE DECISIÓN CON STATE MACHINE
+  TECNICO SCAN VIEW - CENTRO DE DECISIÓN CON STATE MACHINE + IMPRESIÓN QR
   ============================================================================
 
   DESCRIPCIÓN:
@@ -19,7 +19,10 @@
   - Transiciones instantáneas entre estados
   - Sin navegación entre rutas (mejor UX móvil)
   - Tabla móvil optimizada con diseño de 2 líneas
-  - Integración con impresión de etiquetas
+  - Modal de impresión con generación de QR del lado del cliente
+  - Generación de QR en Base64 usando librería 'qrcode'
+  - Diseño de etiquetas con CSS Grid (3 columnas)
+  - Código vertical rotado 90 grados
   - Flujo circular (desde ubicación → activo → ubicación)
 
   DEPENDENCIAS:
@@ -27,6 +30,7 @@
   - Vuetify 3
   - Vue Router
   - API Client
+  - qrcode (para generación de QR en Base64)
 
   AUTOR: Senior Frontend Developer
   FECHA: 2025-12-01
@@ -354,29 +358,132 @@
       </template>
     </v-snackbar>
 
-    <!-- Modal de Impresión (Simulado) -->
-    <v-dialog v-model="dialogImpresion" max-width="500">
+    <!-- ========================================================================
+         MODAL DE IMPRESIÓN - GENERACIÓN DE QR DEL LADO DEL CLIENTE
+         ======================================================================== -->
+    <v-dialog v-model="dialogImpresion" fullscreen transition="dialog-bottom-transition">
       <v-card>
-        <v-card-title class="bg-secondary text-white">
-          <v-icon start>mdi-printer</v-icon>
-          Imprimir Etiquetas de Sala
-        </v-card-title>
-
-        <v-card-text class="pt-4">
-          <p>¿Deseas imprimir etiquetas para todos los activos de esta ubicación?</p>
-          <p class="text-caption text-grey mt-2">
-            Se imprimirán {{ activosDeUbicacion.length }} etiquetas.
-          </p>
-        </v-card-text>
-
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn variant="text" @click="dialogImpresion = false">Cancelar</v-btn>
-          <v-btn color="secondary" variant="flat" @click="confirmarImpresion">
-            <v-icon start>mdi-printer</v-icon>
-            Imprimir
+        <!-- App Bar del Modal -->
+        <v-app-bar color="secondary" dark>
+          <v-btn icon @click="cerrarModalImpresion">
+            <v-icon>mdi-close</v-icon>
           </v-btn>
-        </v-card-actions>
+          <v-toolbar-title>Imprimir Etiquetas QR</v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="imprimirEtiquetas">
+            <v-icon start>mdi-printer</v-icon>
+            Imprimir Ahora
+          </v-btn>
+        </v-app-bar>
+
+        <!-- Contenido del Modal -->
+        <v-card-text class="pa-4">
+          <!-- Sección de Selección -->
+          <div class="selection-section mb-6">
+            <h3 class="text-h6 mb-3">
+              <v-icon start color="primary">mdi-checkbox-multiple-marked</v-icon>
+              Seleccionar Activos para Imprimir
+            </h3>
+
+            <v-card variant="outlined" class="mb-4">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between mb-3">
+                  <div>
+                    <v-checkbox
+                      v-model="seleccionarTodos"
+                      label="Seleccionar Todos"
+                      hide-details
+                      @change="toggleSeleccionarTodos"
+                    ></v-checkbox>
+                  </div>
+                  <v-chip color="primary" variant="tonal">
+                    {{ activosSeleccionados.length }} de {{ activosDeUbicacion.length }} seleccionados
+                  </v-chip>
+                </div>
+
+                <v-divider class="mb-3"></v-divider>
+
+                <!-- Lista de Activos con Checkboxes -->
+                <div class="activos-list" style="max-height: 300px; overflow-y: auto;">
+                  <v-checkbox
+                    v-for="activo in activosDeUbicacion"
+                    :key="activo.id"
+                    v-model="activosSeleccionados"
+                    :value="activo.id"
+                    hide-details
+                    class="mb-2"
+                  >
+                    <template v-slot:label>
+                      <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                        <div>
+                          <span class="font-weight-bold">{{ activo.marca }} {{ activo.modelo }}</span>
+                          <br>
+                          <span class="text-caption text-grey">{{ activo.codigo_inventario }}</span>
+                        </div>
+                        <v-chip size="x-small" :color="getEstadoColor(activo.estado?.nombre_estado)">
+                          {{ activo.estado?.nombre_estado }}
+                        </v-chip>
+                      </div>
+                    </template>
+                  </v-checkbox>
+                </div>
+              </v-card-text>
+            </v-card>
+          </div>
+
+          <!-- Sección de Vista Previa -->
+          <div class="preview-section">
+            <h3 class="text-h6 mb-3">
+              <v-icon start color="secondary">mdi-eye</v-icon>
+              Vista Previa de Etiquetas
+            </h3>
+
+            <v-alert v-if="activosSeleccionados.length === 0" type="info" variant="tonal" class="mb-4">
+              <v-icon start>mdi-information</v-icon>
+              Selecciona al menos un activo para ver la vista previa.
+            </v-alert>
+
+            <!-- Área de Impresión (Oculta en pantalla, visible en impresión) -->
+            <div id="print-area" class="print-area">
+              <div class="labels-grid">
+                <div
+                  v-for="activoId in activosSeleccionados"
+                  :key="activoId"
+                  class="label-item"
+                >
+                  <div class="label-content">
+                    <!-- Nombre del Activo (Izquierda) -->
+                    <div class="label-nombre">
+                      <div class="nombre-text">
+                        {{ getActivoById(activoId)?.marca }} {{ getActivoById(activoId)?.modelo }}
+                      </div>
+                      <div class="tipo-text">
+                        {{ getActivoById(activoId)?.tipo?.nombre_tipo }}
+                      </div>
+                    </div>
+
+                    <!-- QR Code (Centro) -->
+                    <div class="label-qr">
+                      <img
+                        v-if="qrCodes[getActivoById(activoId)?.codigo_inventario]"
+                        :src="qrCodes[getActivoById(activoId)?.codigo_inventario]"
+                        alt="QR Code"
+                        class="qr-image"
+                      />
+                    </div>
+
+                    <!-- Código Vertical (Derecha) -->
+                    <div class="label-codigo-vertical">
+                      <span class="codigo-vertical-text">
+                        {{ getActivoById(activoId)?.codigo_inventario }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -396,10 +503,11 @@
  * Sin navegación entre rutas para mejor UX móvil.
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/services/api'
+import QRCode from 'qrcode'
 
 // ============================================================================
 // COMPOSABLES
@@ -450,6 +558,14 @@ const filtroInventario = ref({
 const showError = ref(false)
 const errorMessage = ref('')
 const dialogImpresion = ref(false)
+
+// ============================================================================
+// STATE - MODAL DE IMPRESIÓN
+// ============================================================================
+
+const activosSeleccionados = ref([])
+const seleccionarTodos = ref(false)
+const qrCodes = ref({}) // { 'A-001': 'data:image/png;base64,...', ... }
 
 // ============================================================================
 // COMPUTED - TABLA INVENTARIO
@@ -650,17 +766,65 @@ function handleActivoClick(event, { item }) {
   uiState.value = 'VIEW_ASSET'
 }
 
-function abrirModalImpresion() {
+async function abrirModalImpresion() {
+  // Resetear selección
+  activosSeleccionados.value = []
+  seleccionarTodos.value = false
+  qrCodes.value = {}
+
+  // Abrir modal
   dialogImpresion.value = true
+
+  // Generar QR codes para todos los activos de la ubicación
+  await generarQRCodes()
 }
 
-function confirmarImpresion() {
-  // Redirigir a la vista de impresión con los activos de esta ubicación
-  router.push({
-    name: 'technician-print',
-    query: { ubicacion: currentLocation.value?.id }
-  })
+function cerrarModalImpresion() {
   dialogImpresion.value = false
+  activosSeleccionados.value = []
+  seleccionarTodos.value = false
+  qrCodes.value = {}
+}
+
+function toggleSeleccionarTodos() {
+  if (seleccionarTodos.value) {
+    activosSeleccionados.value = activosDeUbicacion.value.map(a => a.id)
+  } else {
+    activosSeleccionados.value = []
+  }
+}
+
+function getActivoById(id) {
+  return activosDeUbicacion.value.find(a => a.id === id)
+}
+
+async function generarQRCodes() {
+  // Generar QR codes para todos los activos
+  for (const activo of activosDeUbicacion.value) {
+    try {
+      const qrDataUrl = await QRCode.toDataURL(activo.codigo_inventario, {
+        width: 200,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      })
+      qrCodes.value[activo.codigo_inventario] = qrDataUrl
+    } catch (error) {
+      console.error(`Error generando QR para ${activo.codigo_inventario}:`, error)
+    }
+  }
+}
+
+function imprimirEtiquetas() {
+  if (activosSeleccionados.value.length === 0) {
+    showErrorMessage('Debes seleccionar al menos un activo para imprimir')
+    return
+  }
+
+  // Ejecutar impresión
+  window.print()
 }
 
 // ============================================================================
@@ -724,6 +888,19 @@ function getEstadoColor(estado) {
 }
 
 // ============================================================================
+// WATCHERS
+// ============================================================================
+
+// Sincronizar checkbox "Seleccionar Todos" con la selección real
+watch(activosSeleccionados, (newVal) => {
+  if (newVal.length === activosDeUbicacion.value.length && activosDeUbicacion.value.length > 0) {
+    seleccionarTodos.value = true
+  } else {
+    seleccionarTodos.value = false
+  }
+})
+
+// ============================================================================
 // LIFECYCLE HOOKS
 // ============================================================================
 
@@ -783,12 +960,165 @@ onMounted(async () => {
 }
 
 /* ============================================================================
+   MODAL DE IMPRESIÓN - SECCIÓN DE SELECCIÓN
+   ============================================================================ */
+
+.selection-section {
+  /* Estilos para la sección de selección */
+}
+
+.activos-list {
+  /* Estilos para la lista de activos */
+}
+
+/* ============================================================================
+   MODAL DE IMPRESIÓN - ÁREA DE IMPRESIÓN
+   ============================================================================ */
+
+.print-area {
+  background: #ffffff;
+  padding: 1rem;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+}
+
+.labels-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.label-item {
+  border: 2px dashed #333;
+  padding: 0.5rem;
+  background: #ffffff;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.label-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 80px;
+}
+
+.label-nombre {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.nombre-text {
+  font-size: 0.9rem;
+  font-weight: bold;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+.tipo-text {
+  font-size: 0.75rem;
+  color: #666;
+}
+
+.label-qr {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-image {
+  width: 80px;
+  height: 80px;
+  display: block;
+}
+
+.label-codigo-vertical {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  padding: 0.25rem;
+}
+
+.codigo-vertical-text {
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   ESTILOS DE IMPRESIÓN - @media print
+   ============================================================================ */
+
+@media print {
+  /* Ocultar todo excepto el área de impresión */
+  body * {
+    visibility: hidden;
+  }
+
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    padding: 0;
+    border: none;
+  }
+
+  .labels-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .label-item {
+    border: 2px dashed #333;
+    padding: 0.5rem;
+    background: white;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Ajustar márgenes de página */
+  @page {
+    margin: 0.5cm;
+    size: A4;
+  }
+}
+
+/* ============================================================================
    RESPONSIVE
    ============================================================================ */
 
 @media (max-width: 600px) {
   .scanner-view {
     padding: 0.5rem;
+  }
+
+  .labels-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .labels-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
