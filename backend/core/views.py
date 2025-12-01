@@ -242,7 +242,19 @@ class UbicacionViewSet(viewsets.ModelViewSet):
     """
     queryset = Ubicacion.objects.select_related('departamento').all()
     serializer_class = UbicacionSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
+    def get_permissions(self):
+        """
+        Permite a cualquier usuario autenticado (Técnicos incluidos) ver la lista.
+        Solo Administradores pueden crear, editar o borrar.
+        """
+        if self.action in ['list', 'retrieve']:
+            # Para ver (GET), solo necesitas estar logueado
+            permission_classes = [IsAuthenticated]
+        else:
+            # Para todo lo demás (POST, PUT, DELETE), necesitas ser Admin
+            permission_classes = [IsAdminUser]
+        
+        return [permission() for permission in permission_classes]
 
     # FILTROS Y BÚSQUEDA
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -773,7 +785,7 @@ class HistorialMovimientoViewSet(viewsets.ModelViewSet):
     serializer_class = HistorialMovimientoSerializer
 
     # RBAC: Jefes y Técnicos pueden consultar, solo Admin puede modificar
-    permission_classes = [IsAuthenticated, IsJefeOrAdminReadOnly]
+    permission_classes = [IsAuthenticated, IsTecnicoOperativo | IsJefeOrAdminReadOnly]
 
     # FILTROS Y BÚSQUEDA
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
