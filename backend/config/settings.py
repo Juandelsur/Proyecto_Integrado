@@ -220,7 +220,7 @@ REST_FRAMEWORK = {
     # Autenticación: JWT (primario) + Session (para browsable API)
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
+        #'rest_framework.authentication.SessionAuthentication',
     ],
 
     # Permisos: Autenticado para escribir, público para leer
