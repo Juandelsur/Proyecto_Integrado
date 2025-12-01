@@ -99,18 +99,69 @@ const router = createRouter({
       }
     },
     // ========================================================================
-    // RUTAS DEL TÉCNICO
+    // RUTAS DEL TÉCNICO (CON LAYOUT)
     // ========================================================================
     {
-      path: '/tecnico/home',
-      name: 'technician-home',
-      component: () => import('../views/technician/HomeView.vue'),
+      path: '/tecnico',
+      component: () => import('../layouts/LayoutTecnico.vue'),
       meta: {
-        title: 'Home - Técnico',
         requiresAuth: true,
         requiresRole: 'Técnico'
-      }
+      },
+      children: [
+        {
+          path: 'home',
+          name: 'technician-home',
+          component: () => import('../views/technician/HomeView.vue'),
+          meta: {
+            title: 'Home - Técnico'
+          }
+        },
+        {
+          path: 'scan',
+          name: 'technician-scan',
+          component: () => import('../views/technician/ScannerView.vue'),
+          meta: {
+            title: 'Escanear QR'
+          }
+        },
+        {
+          path: 'history',
+          name: 'technician-history',
+          component: () => import('../views/technician/HistoryView.vue'),
+          meta: {
+            title: 'Histórico'
+          }
+        },
+        {
+          path: 'imprimir',
+          name: 'technician-print',
+          component: () => import('../views/technician/PrintLabelsView.vue'),
+          meta: {
+            title: 'Imprimir Etiquetas'
+          }
+        },
+        {
+          path: 'crear',
+          name: 'technician-create',
+          component: () => import('../views/technician/CreateAssetView.vue'),
+          meta: {
+            title: 'Crear Activo'
+          }
+        },
+        {
+          path: 'editar-buscar',
+          name: 'technician-edit-search',
+          component: () => import('../views/technician/EditAssetSearchView.vue'),
+          meta: {
+            title: 'Editar Activos'
+          }
+        }
+      ]
     },
+    // ========================================================================
+    // RUTAS DEL TÉCNICO (SIN LAYOUT - COMPATIBILIDAD)
+    // ========================================================================
     {
       path: '/escanear',
       name: 'scan-qr',

@@ -1,20 +1,13 @@
 <template>
-  <div class="technician-home">
-    <!-- Header Azul con Nombre del Usuario -->
-    <header class="header-welcome">
-      <div class="header-content">
-        <div class="welcome-text">
-          <p class="greeting">Bienvenido,</p>
-          <h1 class="user-name">{{ userName }}</h1>
-        </div>
-        <button @click="handleLogout" class="btn-logout" title="Cerrar Sesión">
-          <i class="bi bi-box-arrow-right"></i>
-        </button>
-      </div>
-    </header>
+  <div class="technician-home-content">
+    <!-- Bienvenida -->
+    <div class="welcome-section">
+      <h2 class="greeting">Bienvenido,</h2>
+      <h1 class="user-name">{{ userName }}</h1>
+    </div>
 
     <!-- Contenido Principal -->
-    <main class="main-content">
+    <div class="main-content">
       <!-- Botón Principal: Registrar Movimiento -->
       <div class="primary-action">
         <button @click="goToScan" class="btn-scan">
@@ -46,7 +39,7 @@
           <span>Configuración</span>
         </button>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
@@ -70,21 +63,21 @@ const userName = computed(() => {
  * Navega a la vista de escaneo QR
  */
 function goToScan() {
-  router.push('/escanear')
+  router.push('/tecnico/scan')
 }
 
 /**
  * Navega a la vista de impresión de etiquetas
  */
 function goToPrintLabels() {
-  router.push('/imprimir-etiquetas')
+  router.push('/tecnico/imprimir')
 }
 
 /**
  * Navega al histórico de movimientos
  */
 function goToHistory() {
-  router.push('/historico')
+  router.push('/tecnico/history')
 }
 
 /**
@@ -93,57 +86,34 @@ function goToHistory() {
 function goToSettings() {
   router.push('/configuracion')
 }
-
-/**
- * Cierra sesión y redirige al login
- */
-function handleLogout() {
-  if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-    authStore.logout()
-    router.push('/login')
-  }
-}
 </script>
 
 <style scoped>
 /* ============================================================================
-   CONTENEDOR PRINCIPAL
+   CONTENEDOR PRINCIPAL (ADAPTADO PARA LAYOUT)
    ============================================================================ */
 
-.technician-home {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.technician-home-content {
+  min-height: calc(100vh - 112px); /* Altura total - app bar - bottom nav */
   background: #f5f7fa;
+  padding-bottom: 80px; /* Espacio para el FAB */
 }
 
 /* ============================================================================
-   HEADER AZUL CON NOMBRE DEL USUARIO
+   SECCIÓN DE BIENVENIDA
    ============================================================================ */
 
-.header-welcome {
-  background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
-  color: white;
+.welcome-section {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
   padding: 2rem 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.welcome-text {
-  flex: 1;
+  color: white;
+  text-align: center;
 }
 
 .greeting {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 400;
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 0.5rem 0;
   opacity: 0.9;
 }
 
@@ -151,32 +121,7 @@ function handleLogout() {
   font-size: 2rem;
   font-weight: 700;
   margin: 0;
-  line-height: 1.2;
-}
-
-.btn-logout {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-}
-
-.btn-logout:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: scale(1.05);
-}
-
-.btn-logout i {
-  font-size: 1.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 /* ============================================================================
@@ -184,7 +129,6 @@ function handleLogout() {
    ============================================================================ */
 
 .main-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
