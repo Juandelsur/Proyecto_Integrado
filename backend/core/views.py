@@ -127,8 +127,16 @@ class DepartamentoViewSet(viewsets.ModelViewSet):
     """
     queryset = Departamento.objects.all()
     serializer_class = DepartamentoSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
-
+    def get_permissions(self):
+        """
+        Permite a Técnicos ver la lista de departamentos (necesario para filtros).
+        Solo Admin puede crear/borrar departamentos.
+        """
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [IsAuthenticated]
+        else:
+            permission_classes = [IsAdminUser]
+        return [permission() for permission in permission_classes]
 
 @extend_schema_view(
     list=extend_schema(summary="Listar todos los tipos de equipo", tags=["Maestros"]),
