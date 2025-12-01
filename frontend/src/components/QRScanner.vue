@@ -34,8 +34,9 @@
   <div class="qr-scanner-wrapper">
     <!-- ======================================================================
          CAPA 1 (FONDO): LECTOR HTML PURO - SIN VUETIFY
+         NOTA: Usamos un ID único para evitar conflictos si hay múltiples instancias
          ====================================================================== -->
-    <div id="reader" class="qr-reader-element"></div>
+    <div :id="readerId" class="qr-reader-element"></div>
 
     <!-- ======================================================================
          CAPA 2 (OVERLAY): Se muestra hasta que isCameraReady = true
@@ -170,6 +171,21 @@
             <strong>MediaDevices:</strong> {{ hasMediaDevices ? '✅' : '❌' }}
           </div>
           <div class="debug-item">
+            <strong>Reader ID:</strong> {{ readerId }}
+          </div>
+          <div class="debug-item">
+            <strong>URL:</strong>
+            <div class="text-caption" style="word-break: break-all;">
+              {{ currentUrl }}
+            </div>
+          </div>
+          <div class="debug-item">
+            <strong>Error:</strong> {{ error || 'Ninguno' }}
+          </div>
+          <div class="debug-item">
+            <strong>Error Detalle:</strong> {{ errorDetails || 'Ninguno' }}
+          </div>
+          <div class="debug-item">
             <strong>User Agent:</strong>
             <div class="text-caption" style="word-break: break-all;">
               {{ userAgent }}
@@ -208,6 +224,9 @@ const errorDetails = ref(null)
 const mostrarDebug = ref(false)
 const scannerState = ref('IDLE')
 
+// ID único para el elemento reader (evita conflictos con múltiples instancias)
+const readerId = `qr-reader-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
 // ============================================================================
 // COMPUTED - Info de debug
 // ============================================================================
@@ -215,6 +234,7 @@ const scannerState = ref('IDLE')
 const userAgent = computed(() => navigator.userAgent)
 const isHttps = computed(() => window.location.protocol === 'https:')
 const hasMediaDevices = computed(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+const currentUrl = computed(() => window.location.href)
 
 // ============================================================================
 // FUNCIÓN PRINCIPAL: iniciarCamara() - ACTIVADA POR USER GESTURE
@@ -251,13 +271,21 @@ async function iniciarCamara() {
     console.log('✅ nextTick() completado')
 
     // ========================================================================
-    // PASO 4: Verificar elemento #reader
+    // PASO 4: Verificar elemento reader
     // ========================================================================
-    const readerElement = document.getElementById('reader')
+    const readerElement = document.getElementById(readerId)
     if (!readerElement) {
-      throw new Error('Elemento #reader no encontrado en el DOM')
+      throw new Error(`Elemento #${readerId} no encontrado en el DOM`)
     }
-    console.log('✅ Elemento #reader encontrado:', readerElement.offsetWidth, 'x', readerElement.offsetHeight)
+    console.log(`✅ Elemento #${readerId} encontrado:`, readerElement.offsetWidth, 'x', readerElement.offsetHeight)
+
+    // Verificar que tenga dimensiones (crítico para móviles)
+    if (readerElement.offsetWidth === 0 || readerElement.offsetHeight === 0) {
+      console.warn('⚠️ El elemento reader no tiene dimensiones. Forzando...')
+      readerElement.style.width = '100%'
+      readerElement.style.height = '400px'
+      readerElement.style.minHeight = '300px'
+    }
 
     // ========================================================================
     // PASO 5: DELAY DE 300MS - CRÍTICO PARA MÓVILES
@@ -282,8 +310,8 @@ async function iniciarCamara() {
     // ========================================================================
     // PASO 7: Crear instancia de Html5Qrcode
     // ========================================================================
-    html5QrCode = new Html5Qrcode('reader')
-    console.log('✅ Instancia Html5Qrcode creada')
+    html5QrCode = new Html5Qrcode(readerId)
+    console.log('✅ Instancia Html5Qrcode creada con ID:', readerId)
 
     // ========================================================================
     // PASO 8: Configuración optimizada para móviles
