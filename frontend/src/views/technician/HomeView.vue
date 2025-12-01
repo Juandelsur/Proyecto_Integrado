@@ -1,91 +1,335 @@
 <template>
   <div class="technician-home-content">
-    <!-- Bienvenida -->
-    <div class="welcome-section">
-      <h2 class="greeting">Bienvenido,</h2>
-      <h1 class="user-name">{{ userName }}</h1>
-    </div>
+    <!-- ====================================================================
+         1. TARJETA DE BIENVENIDA (Header)
+         ==================================================================== -->
+    <v-card variant="tonal" color="primary" class="mb-4">
+      <v-card-text>
+        <h2 class="text-h5 font-weight-bold mb-1">Hola, {{ userName }}</h2>
+        <p class="text-subtitle-1 mb-0">{{ fechaActual }}</p>
+      </v-card-text>
+    </v-card>
 
-    <!-- Contenido Principal -->
-    <div class="main-content">
-      <!-- Botón Principal: Registrar Movimiento -->
-      <div class="primary-action">
-        <button @click="goToScan" class="btn-scan">
-          <div class="scan-icon">
-            <i class="bi bi-qr-code-scan"></i>
-          </div>
-          <h2 class="scan-title">Registrar Movimiento de Equipo</h2>
-          <p class="scan-subtitle">Escanear Código QR</p>
-        </button>
-      </div>
+    <!-- ====================================================================
+         2. ACCESOS RÁPIDOS DE GESTIÓN (Grid)
+         ==================================================================== -->
+    <v-row class="mb-4">
+      <!-- Botón 1: Crear Activo -->
+      <v-col cols="6">
+        <v-card
+          class="action-card"
+          hover
+          ripple
+          @click="navigateTo('/tecnico/crear')"
+        >
+          <v-card-text class="text-center pa-4">
+            <v-icon size="64" color="primary" class="mb-2">mdi-plus-box</v-icon>
+            <p class="text-subtitle-1 font-weight-medium mb-0">Crear Activo</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-      <!-- Botón Secundario: Imprimir Etiquetas -->
-      <div class="print-action">
-        <button @click="goToPrintLabels" class="btn-print">
-          <i class="bi bi-printer"></i>
-          <span>🖨️ Imprimir Etiquetas</span>
-        </button>
-      </div>
+      <!-- Botón 2: Editar Activos -->
+      <v-col cols="6">
+        <v-card
+          class="action-card"
+          hover
+          ripple
+          @click="navigateTo('/tecnico/editar-buscar')"
+        >
+          <v-card-text class="text-center pa-4">
+            <v-icon size="64" color="info" class="mb-2">mdi-pencil-box-multiple</v-icon>
+            <p class="text-subtitle-1 font-weight-medium mb-0">Editar Activos</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
 
-      <!-- Botones Secundarios -->
-      <div class="secondary-actions">
-        <button @click="goToHistory" class="btn-secondary">
-          <i class="bi bi-clock-history"></i>
-          <span>Histórico</span>
-        </button>
+    <!-- ====================================================================
+         3. FEED DE ACTIVIDAD DEL EQUIPO (Listado)
+         ==================================================================== -->
+    <v-card>
+      <v-card-title class="text-h6 font-weight-bold">
+        Últimos Movimientos del Equipo
+      </v-card-title>
 
-        <button @click="goToSettings" class="btn-secondary">
-          <i class="bi bi-gear"></i>
-          <span>Configuración</span>
-        </button>
-      </div>
-    </div>
+      <!-- Loading State -->
+      <v-card-text v-if="loading" class="text-center py-8">
+        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+        <p class="text-body-2 mt-4">Cargando movimientos...</p>
+      </v-card-text>
+
+      <!-- Error State -->
+      <v-card-text v-else-if="error" class="text-center py-8">
+        <v-icon size="48" color="error" class="mb-2">mdi-alert-circle</v-icon>
+        <p class="text-body-1 text-error">{{ error }}</p>
+        <v-btn color="primary" variant="text" @click="fetchMovimientos">
+          Reintentar
+        </v-btn>
+      </v-card-text>
+
+      <!-- Empty State -->
+      <v-card-text v-else-if="ultimosMovimientos.length === 0" class="text-center py-8">
+        <v-icon size="48" color="grey" class="mb-2">mdi-inbox</v-icon>
+        <p class="text-body-1 text-grey">No hay movimientos registrados</p>
+      </v-card-text>
+
+      <!-- Lista de Movimientos -->
+      <v-list v-else lines="two">
+        <v-list-item
+          v-for="movimiento in ultimosMovimientos"
+          :key="movimiento.id"
+        >
+          <!-- Avatar con color semántico según tipo de acción -->
+          <template v-slot:prepend>
+            <v-avatar :color="getColorByTipo(movimiento.tipo_movimiento)">
+              <v-icon color="white">{{ getIconByTipo(movimiento.tipo_movimiento) }}</v-icon>
+            </v-avatar>
+          </template>
+
+          <!-- Contenido del ítem -->
+          <v-list-item-title class="font-weight-medium">
+            {{ getActivoNombre(movimiento) }}
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            {{ getDescripcionMovimiento(movimiento) }}
+          </v-list-item-subtitle>
+        </v-list-item>
+      </v-list>
+
+      <!-- Footer: Botón Ver Historial Completo -->
+      <v-card-actions v-if="ultimosMovimientos.length > 0">
+        <v-btn
+          variant="text"
+          color="primary"
+          block
+          @click="navigateTo('/tecnico/history')"
+        >
+          Ver Historial Completo
+        </v-btn>
+      </v-card-actions>
+    </v-card>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+/**
+ * ============================================================================
+ * TÉCNICO HOME VIEW - DASHBOARD OPERATIVO
+ * ============================================================================
+ *
+ * Vista principal del técnico con:
+ * 1. Tarjeta de bienvenida con fecha actual
+ * 2. Accesos rápidos a Crear y Editar activos
+ * 3. Feed de actividad con los últimos 15 movimientos del equipo
+ *
+ * RESTRICCIÓN: NO incluye barras de navegación (gestionadas por LayoutTecnico.vue)
+ */
+
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import apiClient from '@/services/api'
+
+// ============================================================================
+// COMPOSABLES
+// ============================================================================
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// ============================================================================
+// STATE
+// ============================================================================
+
+const ultimosMovimientos = ref([])
+const loading = ref(false)
+const error = ref(null)
+
+// ============================================================================
+// COMPUTED PROPERTIES
+// ============================================================================
 
 /**
  * Obtiene el nombre del usuario desde el store
  */
 const userName = computed(() => {
-  // Intentar obtener el nombre completo, si no existe usar el username
   return authStore.user?.nombre_completo || authStore.user?.username || 'Usuario'
 })
 
 /**
- * Navega a la vista de escaneo QR
+ * Genera la fecha actual formateada en español
+ * Ejemplo: "Lunes, 25 de Noviembre de 2024"
  */
-function goToScan() {
-  router.push('/tecnico/scan')
+const fechaActual = computed(() => {
+  const fecha = new Date()
+  const opciones = {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }
+
+  return fecha.toLocaleDateString('es-ES', opciones)
+    .split(' ')
+    .map((palabra, index) => index === 0 ? palabra.charAt(0).toUpperCase() + palabra.slice(1) : palabra)
+    .join(' ')
+})
+
+// ============================================================================
+// MÉTODOS - NAVEGACIÓN
+// ============================================================================
+
+/**
+ * Navega a una ruta específica
+ */
+function navigateTo(path) {
+  router.push(path)
+}
+
+// ============================================================================
+// MÉTODOS - API
+// ============================================================================
+
+/**
+ * Obtiene los últimos 15 movimientos del historial
+ */
+async function fetchMovimientos() {
+  loading.value = true
+  error.value = null
+
+  try {
+    // GET /api/historial-movimientos/?ordering=-fecha_movimiento&limit=15
+    const response = await apiClient.get('/api/historial-movimientos/', {
+      params: {
+        ordering: '-fecha_movimiento', // Ordenar por fecha descendente
+        page_size: 15 // Limitar a 15 resultados
+      }
+    })
+
+    // La respuesta puede ser paginada o un array directo
+    ultimosMovimientos.value = response.data.results || response.data
+
+  } catch (err) {
+    console.error('Error al cargar movimientos:', err)
+    error.value = 'No se pudieron cargar los movimientos. Verifica tu conexión.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// ============================================================================
+// MÉTODOS - HELPERS DE VISUALIZACIÓN
+// ============================================================================
+
+/**
+ * Retorna el color del avatar según el tipo de movimiento
+ */
+function getColorByTipo(tipo) {
+  const colores = {
+    'TRASLADO': 'primary',      // Azul
+    'ASIGNACION': 'success',     // Verde
+    'DEVOLUCION': 'info',        // Azul claro
+    'MANTENIMIENTO': 'warning',  // Naranja
+    'RETORNO': 'success',        // Verde
+    'BAJA': 'error'              // Rojo
+  }
+
+  return colores[tipo] || 'grey'
 }
 
 /**
- * Navega a la vista de impresión de etiquetas
+ * Retorna el icono según el tipo de movimiento
  */
-function goToPrintLabels() {
-  router.push('/tecnico/imprimir')
+function getIconByTipo(tipo) {
+  const iconos = {
+    'TRASLADO': 'mdi-swap-horizontal',
+    'ASIGNACION': 'mdi-account-check',
+    'DEVOLUCION': 'mdi-keyboard-return',
+    'MANTENIMIENTO': 'mdi-wrench',
+    'RETORNO': 'mdi-check-circle',
+    'BAJA': 'mdi-delete'
+  }
+
+  return iconos[tipo] || 'mdi-help-circle'
 }
 
 /**
- * Navega al histórico de movimientos
+ * Obtiene el nombre del activo desde el objeto movimiento
  */
-function goToHistory() {
-  router.push('/tecnico/history')
+function getActivoNombre(movimiento) {
+  // El serializer devuelve el objeto activo completo
+  if (movimiento.activo) {
+    return `${movimiento.activo.marca} ${movimiento.activo.modelo}` || movimiento.activo.codigo_inventario
+  }
+
+  return movimiento.codigo_activo || 'Activo desconocido'
 }
 
 /**
- * Navega a la configuración
+ * Genera la descripción del movimiento
+ * Formato: "Acción por Usuario • Tiempo"
+ * Ejemplo: "Movido a Bodega por Juan • Hace 10 min"
  */
-function goToSettings() {
-  router.push('/configuracion')
+function getDescripcionMovimiento(movimiento) {
+  const accion = getTipoMovimientoTexto(movimiento.tipo_movimiento)
+  const destino = movimiento.ubicacion_destino?.nombre_ubicacion || 'Ubicación desconocida'
+  const usuario = movimiento.usuario_registra?.nombre_completo || movimiento.nombre_usuario || 'Usuario'
+  const tiempo = getTimeAgo(movimiento.fecha_movimiento)
+
+  return `${accion} a ${destino} por ${usuario} • ${tiempo}`
 }
+
+/**
+ * Convierte el tipo de movimiento a texto legible
+ */
+function getTipoMovimientoTexto(tipo) {
+  const textos = {
+    'TRASLADO': 'Trasladado',
+    'ASIGNACION': 'Asignado',
+    'DEVOLUCION': 'Devuelto',
+    'MANTENIMIENTO': 'Enviado a mantenimiento',
+    'RETORNO': 'Retornado',
+    'BAJA': 'Dado de baja'
+  }
+
+  return textos[tipo] || tipo
+}
+
+/**
+ * Calcula el tiempo transcurrido desde una fecha
+ * Retorna: "Hace X minutos/horas/días"
+ */
+function getTimeAgo(fechaISO) {
+  const fecha = new Date(fechaISO)
+  const ahora = new Date()
+  const diffMs = ahora - fecha
+  const diffMinutos = Math.floor(diffMs / 60000)
+
+  if (diffMinutos < 1) return 'Ahora'
+  if (diffMinutos < 60) return `Hace ${diffMinutos} min`
+
+  const diffHoras = Math.floor(diffMinutos / 60)
+  if (diffHoras < 24) return `Hace ${diffHoras} h`
+
+  const diffDias = Math.floor(diffHoras / 24)
+  if (diffDias === 1) return 'Ayer'
+  if (diffDias < 7) return `Hace ${diffDias} días`
+
+  // Si es más de una semana, mostrar la fecha
+  return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })
+}
+
+// ============================================================================
+// LIFECYCLE HOOKS
+// ============================================================================
+
+/**
+ * Al montar el componente, cargar los movimientos
+ */
+onMounted(() => {
+  fetchMovimientos()
+})
 </script>
 
 <style scoped>
@@ -96,255 +340,43 @@ function goToSettings() {
 .technician-home-content {
   min-height: calc(100vh - 112px); /* Altura total - app bar - bottom nav */
   background: #f5f7fa;
-  padding-bottom: 80px; /* Espacio para el FAB */
+  padding: 1rem;
+  padding-bottom: 80px; /* Espacio para el FAB flotante */
 }
 
 /* ============================================================================
-   SECCIÓN DE BIENVENIDA
+   TARJETAS DE ACCIÓN RÁPIDA
    ============================================================================ */
 
-.welcome-section {
-  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
-  padding: 2rem 1.5rem;
-  color: white;
-  text-align: center;
-}
-
-.greeting {
-  font-size: 1rem;
-  font-weight: 400;
-  margin: 0 0 0.5rem 0;
-  opacity: 0.9;
-}
-
-.user-name {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-/* ============================================================================
-   CONTENIDO PRINCIPAL
-   ============================================================================ */
-
-.main-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1.5rem;
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-/* ============================================================================
-   BOTÓN PRINCIPAL: REGISTRAR MOVIMIENTO (TARJETA GRANDE CON QR)
-   ============================================================================ */
-
-.primary-action {
-  width: 100%;
-  margin-bottom: 2rem;
-}
-
-.btn-scan {
-  width: 100%;
-  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
-  border: none;
-  border-radius: 24px;
-  padding: 3rem 2rem;
-  color: white;
+.action-card {
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 24px rgba(13, 71, 161, 0.3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  min-height: 320px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
 }
 
-.btn-scan:hover {
+.action-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(13, 71, 161, 0.4);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
 }
 
-.btn-scan:active {
+.action-card:active {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(13, 71, 161, 0.35);
-}
-
-.scan-icon {
-  margin-bottom: 1.5rem;
-}
-
-.scan-icon i {
-  font-size: 6rem;
-  opacity: 0.95;
-}
-
-.scan-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.3;
-}
-
-.scan-subtitle {
-  font-size: 1.1rem;
-  font-weight: 400;
-  margin: 0;
-  opacity: 0.9;
 }
 
 /* ============================================================================
-   BOTÓN DE IMPRESIÓN (OUTLINE BLANCO)
+   RESPONSIVE ADJUSTMENTS
    ============================================================================ */
 
-.print-action {
-  width: 100%;
-  margin-bottom: 1.5rem;
-}
-
-.btn-print {
-  width: 100%;
-  background: white;
-  border: 2px solid #e0e0e0;
-  color: #424242;
-  padding: 1rem 1.5rem;
-  border-radius: 16px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.btn-print:hover {
-  background: #f5f5f5;
-  border-color: #bdbdbd;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.btn-print:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.btn-print i {
-  font-size: 1.3rem;
-}
-
-/* ============================================================================
-   BOTONES SECUNDARIOS (HISTÓRICO Y CONFIGURACIÓN)
-   ============================================================================ */
-
-.secondary-actions {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.btn-secondary {
-  width: 100%;
-  background: white;
-  border: 2px solid #0d47a1;
-  color: #0d47a1;
-  padding: 1.25rem 1.5rem;
-  border-radius: 16px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.btn-secondary:hover {
-  background: #0d47a1;
-  color: white;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13, 71, 161, 0.2);
-}
-
-.btn-secondary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(13, 71, 161, 0.15);
-}
-
-.btn-secondary i {
-  font-size: 1.5rem;
-}
-
-/* ============================================================================
-   RESPONSIVE - TABLET Y DESKTOP
-   ============================================================================ */
-
-/* Tablets (≥ 768px) */
-@media (min-width: 768px) {
-  .header-welcome {
-    padding: 2.5rem 2rem;
-  }
-
-  .user-name {
-    font-size: 2.5rem;
-  }
-
-  .main-content {
-    padding: 3rem 2rem;
-  }
-
-  .btn-scan {
-    padding: 4rem 3rem;
-    min-height: 380px;
-  }
-
-  .scan-icon i {
-    font-size: 7rem;
-  }
-
-  .scan-title {
-    font-size: 1.75rem;
-  }
-
-  .scan-subtitle {
-    font-size: 1.2rem;
-  }
-
-  .secondary-actions {
-    flex-direction: row;
-    gap: 1.5rem;
-  }
-
-  .btn-secondary {
-    flex: 1;
+@media (max-width: 600px) {
+  .technician-home-content {
+    padding: 0.75rem;
   }
 }
 
-/* Desktop (≥ 1024px) */
-@media (min-width: 1024px) {
-  .btn-scan {
-    min-height: 400px;
-  }
-
-  .scan-icon i {
-    font-size: 8rem;
-  }
-
-  .scan-title {
-    font-size: 2rem;
-  }
+@media (min-width: 960px) {
+  .technician-home-content {
+    max-width: 800px;
+    margin: 0 auto;
 }
 </style>
 
