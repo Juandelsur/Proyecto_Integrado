@@ -1,270 +1,215 @@
 <!--
   ============================================================================
-  QR SCANNER COMPONENT - ESCÁNER DE CÓDIGOS QR CON CÁMARA REAL
+  QR SCANNER COMPONENT v5.0 - PATRÓN "OVERLAY MANUAL"
   ============================================================================
 
-  VERSIÓN: 4.0 - ESTRATEGIA "ISLA HTML" 🏝️
+  VERSIÓN: 5.0 - Reescritura total para móviles
 
-  ARQUITECTURA:
-  - Vuetify para UI (v-card, v-btn, v-icon, v-alert) → Marco visual profesional
-  - HTML puro para área de cámara → Evita conflictos de CSS con Vuetify
-  - "Click para Iniciar" → Resuelve permisos en móviles + problemas de renderizado
+  PROBLEMA RESUELTO:
+  - Chrome/Safari móvil bloquean getUserMedia sin User Gesture
+  - Vuetify colapsa contenedores sin altura fija
 
-  CAMBIOS CRÍTICOS V4:
-  ✅ Isla HTML: <div id="reader"> con estilos inline (height en px)
-  ✅ Click para Iniciar: Botón grande que activa la cámara (User Interaction)
-  ✅ Delay de 200ms: setTimeout antes de html5QrCode.start()
-  ✅ Configuración robusta: fps=10, qrbox=250, aspectRatio=1.0
-  ✅ Manejo de errores: v-alert detallado + console.error
+  SOLUCIÓN:
+  - Altura fija de 400px en CSS (NO inline)
+  - Overlay con botón ACTIVAR CÁMARA (User Gesture)
+  - NO hay start() en onMounted
+  - nextTick() + setTimeout(300ms) antes de start()
+  - Limpieza con stop().clear() en onBeforeUnmount
 
   EVENTOS:
-  - @scan-success: Emitido cuando se detecta un código QR exitosamente
-    Payload: { decodedText: string, decodedResult: object }
-
-  - @scan-error: Emitido cuando hay un error al escanear
-    Payload: { error: string, details: string }
+  - @scan-success: { decodedText, decodedResult }
+  - @scan-error: { error, details }
 
   DEPENDENCIAS:
   - html5-qrcode: ^2.3.8
-  - Vuetify 3: v-card, v-btn, v-icon, v-alert
+  - Vuetify 3
 
-  USO:
-  <QRScanner
-    @scan-success="handleScanSuccess"
-    @scan-error="handleScanError"
-  />
-
-  AUTOR: Senior Full Stack Engineer
-  FECHA: 2025-12-01 (Refactorizado v4.0 - Isla HTML)
   ============================================================================
 -->
 
 <template>
   <!-- ========================================================================
-       CONTENEDOR PRINCIPAL - VUETIFY CARD
+       CONTENEDOR PRINCIPAL - ALTURA FIJA 400px
        ======================================================================== -->
-  <v-card class="qr-scanner-card" elevation="8" rounded="lg">
-    <!-- HEADER -->
-    <v-card-title class="scanner-header">
-      <v-icon size="28" color="primary" class="mr-2">mdi-qrcode-scan</v-icon>
-      <span class="text-h6 font-weight-bold">Escáner QR</span>
-    </v-card-title>
+  <div class="qr-scanner-wrapper">
+    <!-- ======================================================================
+         CAPA 1 (FONDO): LECTOR HTML PURO - SIN VUETIFY
+         ====================================================================== -->
+    <div id="reader" class="qr-reader-element"></div>
 
-    <!-- ========================================================================
-         ISLA HTML - ÁREA DE CÁMARA (HTML PURO - SIN VUETIFY)
-         ======================================================================== -->
-    <v-card-text class="pa-0">
-      <!-- Contenedor de la isla HTML -->
-      <div class="camera-island-container">
-        <!-- ISLA HTML: Elemento crudo para html5-qrcode -->
-        <div
-          id="reader"
-          style="width: 100%; height: 350px; border: 1px solid #e0e0e0; background: #000;"
-        ></div>
+    <!-- ======================================================================
+         CAPA 2 (OVERLAY): Se muestra hasta que isCameraReady = true
+         ====================================================================== -->
+    <div v-if="!isCameraReady" class="overlay-manual">
+      <!-- Estado: Esperando activación -->
+      <div v-if="!isInitializing && !error" class="overlay-content">
+        <v-icon size="72" color="white" class="mb-4 pulse-animation">
+          mdi-camera
+        </v-icon>
 
-        <!-- ====================================================================
-             OVERLAY: BOTÓN "INICIAR ESCÁNER" (Click para Iniciar)
-             ==================================================================== -->
-        <div v-if="!cameraReady && !error" class="start-overlay">
-          <div class="start-content">
-            <!-- Ícono animado -->
-            <v-icon size="80" color="white" class="camera-icon-animated">
-              mdi-camera
-            </v-icon>
+        <h3 class="text-h5 font-weight-bold text-white mb-2">
+          Escáner QR
+        </h3>
 
-            <!-- Título -->
-            <h3 class="text-h5 font-weight-bold white--text mt-4 mb-2">
-              Listo para escanear
-            </h3>
+        <p class="text-body-2 text-white mb-6" style="opacity: 0.8;">
+          Presiona el botón para activar la cámara
+        </p>
 
-            <!-- Spinner mientras inicializa -->
-            <div v-if="isInitializing" class="text-center">
-              <v-progress-circular
-                indeterminate
-                color="white"
-                size="64"
-                width="6"
-                class="mb-4"
-              ></v-progress-circular>
-              <p class="white--text text-body-1">Iniciando cámara...</p>
-            </div>
+        <v-btn
+          size="x-large"
+          color="primary"
+          variant="elevated"
+          rounded="pill"
+          class="activate-btn"
+          @click="iniciarCamara"
+        >
+          <v-icon start size="28">mdi-camera</v-icon>
+          ACTIVAR CÁMARA
+        </v-btn>
 
-            <!-- Botón de inicio (User Interaction) -->
-            <div v-else class="text-center">
-              <p class="white--text text-body-1 mb-4">
-                Presiona el botón para activar la cámara
-              </p>
+        <p class="text-caption text-white mt-4" style="opacity: 0.6;">
+          Se solicitarán permisos de cámara
+        </p>
+      </div>
 
-              <v-btn
-                size="x-large"
-                color="primary"
-                elevation="8"
-                rounded="lg"
-                @click="startScannerManually"
-                class="start-button"
-              >
-                <v-icon left size="28">mdi-camera</v-icon>
-                INICIAR ESCÁNER
-              </v-btn>
+      <!-- Estado: Inicializando cámara -->
+      <div v-if="isInitializing && !error" class="overlay-content">
+        <v-progress-circular
+          indeterminate
+          color="white"
+          size="80"
+          width="6"
+          class="mb-4"
+        ></v-progress-circular>
 
-              <p class="white--text text-caption mt-4 opacity-70">
-                Se solicitarán permisos de cámara
-              </p>
-            </div>
+        <p class="text-h6 text-white">Iniciando cámara...</p>
+        <p class="text-caption text-white" style="opacity: 0.7;">
+          Acepta los permisos si se solicitan
+        </p>
+      </div>
+
+      <!-- Estado: Error -->
+      <div v-if="error" class="overlay-content overlay-error">
+        <v-alert
+          type="error"
+          variant="elevated"
+          prominent
+          class="mb-4"
+          max-width="350"
+        >
+          <template v-slot:prepend>
+            <v-icon size="40">mdi-alert-circle</v-icon>
+          </template>
+
+          <div class="text-subtitle-1 font-weight-bold mb-1">
+            {{ error }}
           </div>
-        </div>
 
-        <!-- ====================================================================
-             OVERLAY: ERROR (Solo si hay error)
-             ==================================================================== -->
-        <div v-if="error" class="error-overlay">
-          <div class="error-content">
-            <v-alert
-              type="error"
-              variant="tonal"
-              prominent
-              border="start"
-              class="mb-4"
-            >
-              <template v-slot:prepend>
-                <v-icon size="48">mdi-alert-circle</v-icon>
-              </template>
-
-              <div class="text-h6 font-weight-bold mb-2">
-                Error al iniciar la cámara
-              </div>
-
-              <div class="text-body-2 mb-2">
-                {{ error }}
-              </div>
-
-              <div v-if="errorDetails" class="text-caption error-details">
-                {{ errorDetails }}
-              </div>
-            </v-alert>
-
-            <!-- Botones de acción -->
-            <div class="d-flex flex-column gap-2">
-              <v-btn
-                color="error"
-                variant="elevated"
-                size="large"
-                @click="retryScanner"
-                block
-              >
-                <v-icon left>mdi-refresh</v-icon>
-                Reintentar
-              </v-btn>
-
-              <v-btn
-                color="grey-darken-2"
-                variant="outlined"
-                size="small"
-                @click="showDebugInfo"
-                block
-              >
-                <v-icon left size="20">mdi-bug</v-icon>
-                Ver información de debug
-              </v-btn>
-            </div>
+          <div v-if="errorDetails" class="text-caption">
+            {{ errorDetails }}
           </div>
+        </v-alert>
+
+        <div class="d-flex flex-column" style="gap: 12px; width: 100%; max-width: 300px;">
+          <v-btn
+            color="error"
+            variant="elevated"
+            size="large"
+            block
+            @click="reintentar"
+          >
+            <v-icon start>mdi-refresh</v-icon>
+            Reintentar
+          </v-btn>
+
+          <v-btn
+            color="grey-lighten-2"
+            variant="text"
+            size="small"
+            block
+            @click="mostrarDebug = true"
+          >
+            <v-icon start size="18">mdi-bug</v-icon>
+            Ver información técnica
+          </v-btn>
         </div>
       </div>
-    </v-card-text>
+    </div>
 
-    <!-- ========================================================================
-         FOOTER: ESTADO DE LA CÁMARA
-         ======================================================================== -->
-    <v-card-actions v-if="cameraReady" class="scanner-footer">
-      <v-chip color="success" variant="flat" size="small">
-        <v-icon left size="16">mdi-circle</v-icon>
-        Cámara activa
+    <!-- ======================================================================
+         INDICADOR DE CÁMARA ACTIVA (Solo cuando funciona)
+         ====================================================================== -->
+    <div v-if="isCameraReady" class="camera-active-indicator">
+      <v-chip color="success" size="small" variant="elevated">
+        <v-icon start size="12">mdi-circle</v-icon>
+        Cámara activa - Apunta al código QR
       </v-chip>
-      <v-spacer></v-spacer>
-      <v-chip color="primary" variant="outlined" size="small">
-        Apunta al código QR
-      </v-chip>
-    </v-card-actions>
+    </div>
 
-    <!-- ========================================================================
-         DEBUG PANEL (Solo si debugMode = true)
-         ======================================================================== -->
-    <v-dialog v-model="debugMode" max-width="500">
+    <!-- ======================================================================
+         DIALOG DE DEBUG
+         ====================================================================== -->
+    <v-dialog v-model="mostrarDebug" max-width="400">
       <v-card>
-        <v-card-title class="bg-grey-darken-3 white--text">
-          <v-icon left color="white">mdi-bug</v-icon>
-          Información de Debug
+        <v-card-title class="bg-grey-darken-3">
+          <v-icon start color="white">mdi-bug</v-icon>
+          <span class="text-white">Información de Debug</span>
         </v-card-title>
 
         <v-card-text class="pt-4">
-          <v-list density="compact">
-            <v-list-item>
-              <v-list-item-title>Estado:</v-list-item-title>
-              <v-list-item-subtitle>{{ scannerState }}</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item>
-              <v-list-item-title>Cámara Lista:</v-list-item-title>
-              <v-list-item-subtitle>{{ cameraReady ? '✅ Sí' : '❌ No' }}</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item>
-              <v-list-item-title>Escaneando:</v-list-item-title>
-              <v-list-item-subtitle>{{ isScanning ? '✅ Sí' : '❌ No' }}</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item>
-              <v-list-item-title>HTTPS:</v-list-item-title>
-              <v-list-item-subtitle>{{ isHttps ? '✅ Sí' : '❌ No' }}</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item>
-              <v-list-item-title>MediaDevices API:</v-list-item-title>
-              <v-list-item-subtitle>{{ hasMediaDevices ? '✅ Disponible' : '❌ No disponible' }}</v-list-item-subtitle>
-            </v-list-item>
-
-            <v-list-item>
-              <v-list-item-title>Navegador:</v-list-item-title>
-              <v-list-item-subtitle class="text-caption">{{ userAgent }}</v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
+          <div class="debug-item">
+            <strong>Estado:</strong> {{ scannerState }}
+          </div>
+          <div class="debug-item">
+            <strong>Cámara Lista:</strong> {{ isCameraReady ? '✅' : '❌' }}
+          </div>
+          <div class="debug-item">
+            <strong>HTTPS:</strong> {{ isHttps ? '✅' : '❌' }}
+          </div>
+          <div class="debug-item">
+            <strong>MediaDevices:</strong> {{ hasMediaDevices ? '✅' : '❌' }}
+          </div>
+          <div class="debug-item">
+            <strong>User Agent:</strong>
+            <div class="text-caption" style="word-break: break-all;">
+              {{ userAgent }}
+            </div>
+          </div>
         </v-card-text>
 
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="primary" @click="debugMode = false">Cerrar</v-btn>
+          <v-btn color="primary" @click="mostrarDebug = false">Cerrar</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-  </v-card>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { Html5Qrcode } from 'html5-qrcode'
 
 // ============================================================================
-// PROPS Y EMITS
+// EMITS
 // ============================================================================
 
 const emit = defineEmits(['scan-success', 'scan-error'])
 
 // ============================================================================
-// STATE
+// STATE - Solo lo esencial
 // ============================================================================
 
-let html5QrCode = null // NO usar ref() para evitar problemas de reactividad
-const isInitializing = ref(false) // Cambiado a false - se activa manualmente
-const isScanning = ref(false)
-const cameraReady = ref(false) // NUEVO: Indica si la cámara está lista y el video visible
+let html5QrCode = null // NO usar ref() - evita problemas de reactividad
+const isCameraReady = ref(false) // CRÍTICO: Controla visibilidad del overlay
+const isInitializing = ref(false)
 const error = ref(null)
 const errorDetails = ref(null)
-const debugMode = ref(false)
+const mostrarDebug = ref(false)
 const scannerState = ref('IDLE')
-const autoStartAttempted = ref(false) // NUEVO: Evita múltiples intentos automáticos
 
 // ============================================================================
-// COMPUTED - DEBUG INFO
+// COMPUTED - Info de debug
 // ============================================================================
 
 const userAgent = computed(() => navigator.userAgent)
@@ -272,214 +217,178 @@ const isHttps = computed(() => window.location.protocol === 'https:')
 const hasMediaDevices = computed(() => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
 
 // ============================================================================
-// MÉTODOS
+// FUNCIÓN PRINCIPAL: iniciarCamara() - ACTIVADA POR USER GESTURE
 // ============================================================================
 
 /**
- * Inicia el escáner de QR codes con configuración robusta para móviles
- * ESTRATEGIA "ISLA HTML": Delay de 200ms + configuración a prueba de balas
+ * Inicia la cámara tras un click del usuario (User Gesture)
+ * PATRÓN: nextTick() + setTimeout(300ms) + start()
  */
-async function startScanner() {
-  console.log('🚀 [QRScanner v4.0] Iniciando escáner con estrategia Isla HTML...')
-  console.log('📱 User Agent:', navigator.userAgent)
-  console.log('🔒 HTTPS:', window.location.protocol === 'https:')
-  console.log('📷 MediaDevices API:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+async function iniciarCamara() {
+  console.log('📸 [QRScanner v5.0] iniciarCamara() - User Gesture detectado')
 
   try {
+    // ========================================================================
+    // PASO 1: Preparar estado
+    // ========================================================================
     isInitializing.value = true
-    cameraReady.value = false
     error.value = null
     errorDetails.value = null
     scannerState.value = 'INITIALIZING'
 
     // ========================================================================
-    // VERIFICACIÓN 1: MediaDevices API disponible
+    // PASO 2: Verificar MediaDevices API
     // ========================================================================
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      throw new Error('MediaDevices API no disponible. Verifica que estés usando HTTPS.')
+      throw new Error('Tu navegador no soporta acceso a la cámara. Usa Chrome o Safari.')
     }
-    console.log('✅ [QRScanner] MediaDevices API disponible')
+    console.log('✅ MediaDevices API disponible')
 
     // ========================================================================
-    // VERIFICACIÓN 2: Esperar a que el DOM esté listo (nextTick)
+    // PASO 3: Esperar a que el DOM esté listo (nextTick)
     // ========================================================================
     await nextTick()
-    console.log('✅ [QRScanner] nextTick() completado - DOM listo')
+    console.log('✅ nextTick() completado')
 
     // ========================================================================
-    // VERIFICACIÓN 3: Elemento #reader existe en el DOM
+    // PASO 4: Verificar elemento #reader
     // ========================================================================
     const readerElement = document.getElementById('reader')
     if (!readerElement) {
-      throw new Error('Elemento #reader no encontrado en el DOM después de nextTick()')
+      throw new Error('Elemento #reader no encontrado en el DOM')
     }
-    console.log('✅ [QRScanner] Elemento #reader encontrado')
-    console.log('📐 [QRScanner] Dimensiones:', readerElement.offsetWidth, 'x', readerElement.offsetHeight)
+    console.log('✅ Elemento #reader encontrado:', readerElement.offsetWidth, 'x', readerElement.offsetHeight)
 
     // ========================================================================
-    // DELAY DE 200MS - CRÍTICO PARA RENDERIZADO
+    // PASO 5: DELAY DE 300MS - CRÍTICO PARA MÓVILES
+    // Asegura que el DOM esté completamente pintado
     // ========================================================================
-    console.log('⏳ [QRScanner] Esperando 200ms para asegurar renderizado completo...')
-    await new Promise(resolve => setTimeout(resolve, 200))
-    console.log('✅ [QRScanner] Delay completado - DOM estable')
+    console.log('⏳ Esperando 300ms para asegurar renderizado...')
+    await new Promise(resolve => setTimeout(resolve, 300))
+    console.log('✅ Delay completado')
 
     // ========================================================================
-    // CREAR INSTANCIA DE HTML5-QRCODE
+    // PASO 6: Crear instancia de Html5Qrcode
     // ========================================================================
     html5QrCode = new Html5Qrcode('reader')
-    console.log('✅ [QRScanner] Instancia Html5Qrcode creada')
+    console.log('✅ Instancia Html5Qrcode creada')
 
     // ========================================================================
-    // CONFIGURACIÓN A PRUEBA DE BALAS
+    // PASO 7: Configuración optimizada para móviles
     // ========================================================================
-    const qrCodeConfig = {
-      fps: 10,                    // ✅ 10 FPS óptimo para móviles
-      qrbox: 250,                 // ✅ Área de escaneo 250x250px
-      aspectRatio: 1.0,           // ✅ Relación de aspecto cuadrada (evita deformación)
-      disableFlip: false          // ✅ Permitir flip horizontal
+    const config = {
+      fps: 10,
+      qrbox: 250,
+      aspectRatio: 1.0,
+      disableFlip: false
     }
 
-    const cameraConstraints = {
-      facingMode: { exact: 'environment' } // ✅ FORZAR cámara trasera
-    }
-
-    console.log('🔧 [QRScanner] Configuración:')
-    console.log('   - FPS:', qrCodeConfig.fps)
-    console.log('   - QR Box:', qrCodeConfig.qrbox)
-    console.log('   - Aspect Ratio:', qrCodeConfig.aspectRatio)
-    console.log('   - Facing Mode:', cameraConstraints.facingMode.exact)
-
+    // ========================================================================
+    // PASO 8: INICIAR CÁMARA - facingMode: "environment" para cámara trasera
+    // ========================================================================
+    console.log('📷 Solicitando acceso a cámara trasera...')
     scannerState.value = 'REQUESTING_CAMERA'
 
-    // ========================================================================
-    // CALLBACKS
-    // ========================================================================
-    const onScanSuccess = (decodedText, decodedResult) => {
-      console.log('✅ [QRScanner] QR Code detectado:', decodedText)
-      stopScanner()
-      emit('scan-success', { decodedText, decodedResult })
-    }
-
-    const onScanError = (errorMessage) => {
-      // Silenciar errores normales de escaneo (no son críticos)
-    }
-
-    // ========================================================================
-    // INICIAR ESCÁNER
-    // ========================================================================
-    console.log('📷 [QRScanner] Solicitando acceso a la cámara...')
     await html5QrCode.start(
-      cameraConstraints,
-      qrCodeConfig,
-      onScanSuccess,
-      onScanError
+      { facingMode: 'environment' }, // Cámara trasera
+      config,
+      onQRCodeSuccess,
+      onQRCodeError
     )
 
     // ========================================================================
-    // ÉXITO - CÁMARA ACTIVA
+    // ÉXITO: Cámara activa - Ocultar overlay
     // ========================================================================
-    isScanning.value = true
+    isCameraReady.value = true
     isInitializing.value = false
-    cameraReady.value = true
     scannerState.value = 'SCANNING'
-
-    console.log('✅ [QRScanner] Escáner iniciado correctamente')
-    console.log('📹 [QRScanner] Video stream activo')
-    console.log('🎬 [QRScanner] Overlay oculto - Cámara visible')
+    console.log('✅ Cámara iniciada correctamente - Overlay oculto')
 
   } catch (err) {
-    console.error('❌ [QRScanner] Error al iniciar el escáner:', err)
-    console.error('❌ [QRScanner] Error name:', err.name)
-    console.error('❌ [QRScanner] Error message:', err.message)
-
-    isInitializing.value = false
-    cameraReady.value = false
-    scannerState.value = 'ERROR'
-
-    // ========================================================================
-    // MANEJO DETALLADO DE ERRORES
-    // ========================================================================
-    if (err.name === 'NotAllowedError' || err.message.includes('Permission denied')) {
-      error.value = 'Permiso de cámara denegado'
-      errorDetails.value = 'Ve a Configuración → Permisos → Cámara y permite el acceso.'
-    } else if (err.name === 'NotFoundError' || err.message.includes('Requested device not found')) {
-      error.value = 'No se encontró la cámara trasera'
-      errorDetails.value = 'Verifica que tu dispositivo tenga cámara trasera.'
-    } else if (err.name === 'NotReadableError' || err.message.includes('Could not start video source')) {
-      error.value = 'La cámara está siendo usada por otra aplicación'
-      errorDetails.value = 'Cierra otras apps que usen la cámara.'
-    } else if (err.message.includes('HTTPS') || err.message.includes('secure context')) {
-      error.value = 'Se requiere HTTPS para acceder a la cámara'
-      errorDetails.value = `Protocolo actual: ${window.location.protocol}`
-    } else if (err.message.includes('MediaDevices')) {
-      error.value = 'API de MediaDevices no disponible'
-      errorDetails.value = 'Tu navegador no soporta acceso a la cámara.'
-    } else {
-      error.value = 'Error desconocido al iniciar la cámara'
-      errorDetails.value = `${err.name}: ${err.message}`
-    }
-
-    emit('scan-error', { error: error.value, details: errorDetails.value })
-
-    // ========================================================================
-    // ALERT PARA DEBUG (IMPORTANTE EN PRODUCCIÓN)
-    // ========================================================================
-    alert(`❌ ERROR DE CÁMARA\n\n${error.value}\n\n${errorDetails.value}\n\nError técnico: ${err.message}`)
+    console.error('❌ Error al iniciar cámara:', err)
+    handleError(err)
   }
 }
 
-/**
- * Detiene el escáner y libera la cámara
- */
-async function stopScanner() {
-  console.log('🛑 [QRScanner] Deteniendo escáner...')
+// ============================================================================
+// CALLBACKS DE ESCANEO
+// ============================================================================
 
-  if (html5QrCode && isScanning.value) {
-    try {
-      await html5QrCode.stop()
-      await html5QrCode.clear()
-      isScanning.value = false
-      cameraReady.value = false
-      scannerState.value = 'STOPPED'
-      console.log('✅ [QRScanner] Escáner detenido y cámara liberada')
-    } catch (err) {
-      console.error('❌ [QRScanner] Error al detener el escáner:', err)
-    }
+function onQRCodeSuccess(decodedText, decodedResult) {
+  console.log('✅ QR detectado:', decodedText)
+
+  // Detener escáner antes de emitir
+  detenerCamara()
+
+  emit('scan-success', { decodedText, decodedResult })
+}
+
+function onQRCodeError(errorMessage) {
+  // Silenciar - son errores normales mientras busca QR
+}
+
+// ============================================================================
+// MANEJO DE ERRORES
+// ============================================================================
+
+function handleError(err) {
+  isInitializing.value = false
+  isCameraReady.value = false
+  scannerState.value = 'ERROR'
+
+  // Mapeo de errores a mensajes amigables
+  if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+    error.value = 'Permiso de cámara denegado'
+    errorDetails.value = 'Ve a Configuración del navegador → Permisos → Cámara y permite el acceso a este sitio.'
+  } else if (err.name === 'NotFoundError' || err.message?.includes('Requested device not found')) {
+    error.value = 'No se encontró la cámara'
+    errorDetails.value = 'Verifica que tu dispositivo tenga cámara trasera disponible.'
+  } else if (err.name === 'NotReadableError' || err.message?.includes('Could not start video source')) {
+    error.value = 'La cámara está ocupada'
+    errorDetails.value = 'Cierra otras aplicaciones que estén usando la cámara.'
+  } else if (err.message?.includes('HTTPS') || err.message?.includes('secure context')) {
+    error.value = 'Se requiere conexión segura (HTTPS)'
+    errorDetails.value = `Protocolo actual: ${window.location.protocol}. La cámara solo funciona en HTTPS.`
   } else {
-    console.log('⚠️ [QRScanner] No hay escáner activo para detener')
+    error.value = 'Error al acceder a la cámara'
+    errorDetails.value = `${err.name || 'Error'}: ${err.message}`
+  }
+
+  emit('scan-error', { error: error.value, details: errorDetails.value })
+}
+
+// ============================================================================
+// DETENER CÁMARA Y LIMPIAR
+// ============================================================================
+
+async function detenerCamara() {
+  console.log('🛑 Deteniendo cámara...')
+
+  if (html5QrCode) {
+    try {
+      // IMPORTANTE: stop() y luego clear()
+      await html5QrCode.stop()
+      html5QrCode.clear()
+      console.log('✅ Cámara detenida y limpiada')
+    } catch (err) {
+      console.warn('⚠️ Error al detener cámara:', err.message)
+    } finally {
+      html5QrCode = null
+      isCameraReady.value = false
+      scannerState.value = 'STOPPED'
+    }
   }
 }
 
-/**
- * Inicia el escáner manualmente (User Interaction)
- * CRÍTICO: Los navegadores móviles requieren que la cámara sea activada por un click del usuario
- */
-async function startScannerManually() {
-  console.log('👆 [QRScanner] Inicio manual por User Interaction')
-  await startScanner()
-}
+// ============================================================================
+// REINTENTAR
+// ============================================================================
 
-/**
- * Reintentar el escáner después de un error
- */
-function retryScanner() {
-  console.log('🔄 [QRScanner] Reintentando iniciar escáner...')
+function reintentar() {
+  console.log('🔄 Reintentando...')
   error.value = null
   errorDetails.value = null
-  debugMode.value = false
-  startScanner()
-}
-
-/**
- * Mostrar información de debug
- */
-function showDebugInfo() {
-  debugMode.value = true
-  console.log('🐛 [QRScanner] Modo debug activado')
-  console.log('📊 Estado:', scannerState.value)
-  console.log('📱 User Agent:', navigator.userAgent)
-  console.log('🔒 HTTPS:', window.location.protocol === 'https:')
-  console.log('📷 MediaDevices:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+  iniciarCamara()
 }
 
 // ============================================================================
@@ -487,141 +396,133 @@ function showDebugInfo() {
 // ============================================================================
 
 onMounted(() => {
-  console.log('🎬 [QRScanner] Componente montado')
-  console.log('🌐 [QRScanner] URL:', window.location.href)
-  console.log('🔧 [QRScanner] Protocolo:', window.location.protocol)
+  console.log('🎬 [QRScanner v5.0] Componente montado')
+  console.log('🌐 URL:', window.location.href)
+  console.log('🔒 HTTPS:', window.location.protocol === 'https:')
+  console.log('📱 User Agent:', navigator.userAgent)
 
-  // NO INICIAR AUTOMÁTICAMENTE - Esperar User Interaction
-  // Esto es crítico para móviles que bloquean acceso a cámara sin click del usuario
-  console.log('⏸️ [QRScanner] Esperando User Interaction para iniciar cámara')
-
-  // OPCIONAL: Intentar inicio automático solo en desktop (no móviles)
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-
-  if (!isMobile && !autoStartAttempted.value) {
-    console.log('💻 [QRScanner] Desktop detectado - Intentando inicio automático')
-    autoStartAttempted.value = true
-
-    // Delay para asegurar que el DOM esté completamente renderizado
-    setTimeout(async () => {
-      await nextTick()
-      startScanner()
-    }, 200)
-  } else {
-    console.log('📱 [QRScanner] Móvil detectado - Requiere User Interaction')
-  }
+  // ⚠️ NO INICIAR CÁMARA AQUÍ
+  // Los navegadores móviles bloquean getUserMedia sin User Gesture
+  console.log('⏸️ Esperando click del usuario para iniciar cámara...')
 })
 
-onUnmounted(async () => {
-  console.log('🧹 [QRScanner] Componente desmontado - Liberando recursos...')
-  await stopScanner()
+onBeforeUnmount(async () => {
+  console.log('🧹 Componente desmontándose - Liberando cámara...')
+  await detenerCamara()
 })
-
-
 </script>
 
 <style scoped>
 /* ============================================================================
-   VUETIFY CARD - CONTENEDOR PRINCIPAL
+   CONTENEDOR PRINCIPAL - ALTURA FIJA DE 400px (CRÍTICO)
    ============================================================================ */
 
-.qr-scanner-card {
-  max-width: 500px;
-  margin: 0 auto;
-  overflow: hidden;
-}
-
-.scanner-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white !important;
-  padding: 16px 20px;
-}
-
-.scanner-footer {
-  background: #f5f5f5;
-  padding: 12px 16px;
-  border-top: 1px solid #e0e0e0;
-}
-
-/* ============================================================================
-   ISLA HTML - CONTENEDOR DE CÁMARA
-   ============================================================================ */
-
-.camera-island-container {
+.qr-scanner-wrapper {
   position: relative;
   width: 100%;
-  height: 350px;
-  overflow: hidden;
+  max-width: 500px;
+  height: 400px; /* ALTURA FIJA - Evita que Vuetify colapse a 0px */
+  margin: 0 auto;
   background: #000;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================================================
-   ELEMENTO #reader - ISLA HTML PURA (SIN VUETIFY)
+   CAPA 1 (FONDO): LECTOR HTML PURO - SIN VUETIFY
    ============================================================================ */
 
-#reader {
-  /* Los estilos inline son críticos - NO sobrescribir */
-  position: relative;
+.qr-reader-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  z-index: 1;
 }
 
-/* Estilos para el video generado por html5-qrcode */
-#reader video {
+/* Estilos para elementos generados por html5-qrcode */
+.qr-reader-element video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
   display: block !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  z-index: 1 !important;
 }
 
-/* Estilos para el canvas (overlay del QR box) */
-#reader canvas {
+.qr-reader-element canvas {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   width: 100% !important;
   height: 100% !important;
-  z-index: 2 !important;
 }
 
-/* Contenedor interno generado por html5-qrcode */
-#reader > div {
+.qr-reader-element > div {
   width: 100% !important;
   height: 100% !important;
-  position: relative !important;
 }
 
 /* ============================================================================
-   OVERLAY: BOTÓN "INICIAR ESCÁNER" (Click para Iniciar)
+   CAPA 2 (OVERLAY): BOTÓN ACTIVAR CÁMARA
    ============================================================================ */
 
-.start-overlay {
+.overlay-manual {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
-  transition: opacity 0.3s ease;
+  z-index: 10; /* Encima del lector */
 }
 
-.start-content {
+.overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 2rem;
-  max-width: 90%;
+  padding: 24px;
+  width: 100%;
 }
 
-.camera-icon-animated {
-  animation: pulse-icon 2s ease-in-out infinite;
+.overlay-error {
+  background: rgba(0, 0, 0, 0.85);
+  padding: 20px;
 }
 
-@keyframes pulse-icon {
+/* ============================================================================
+   BOTÓN ACTIVAR CÁMARA
+   ============================================================================ */
+
+.activate-btn {
+  text-transform: none !important;
+  font-weight: 700 !important;
+  font-size: 1.1rem !important;
+  letter-spacing: 0.5px;
+  padding: 16px 32px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+.activate-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ============================================================================
+   ANIMACIÓN PULSE
+   ============================================================================ */
+
+.pulse-animation {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
@@ -632,58 +533,29 @@ onUnmounted(async () => {
   }
 }
 
-.start-button {
-  text-transform: none;
-  letter-spacing: 0.5px;
-  font-weight: 700;
-  padding: 12px 32px !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
-}
+/* ============================================================================
+   INDICADOR DE CÁMARA ACTIVA
+   ============================================================================ */
 
-.start-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4) !important;
-}
-
-.opacity-70 {
-  opacity: 0.7;
+.camera-active-indicator {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
 }
 
 /* ============================================================================
-   OVERLAY: ERROR
+   DEBUG
    ============================================================================ */
 
-.error-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-  padding: 1rem;
+.debug-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
 }
 
-.error-content {
-  width: 100%;
-  max-width: 400px;
-}
-
-.error-details {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 8px;
-  font-family: monospace;
-  font-size: 0.75rem;
-  word-break: break-word;
-}
-
-.gap-2 {
-  gap: 8px;
+.debug-item:last-child {
+  border-bottom: none;
 }
 
 /* ============================================================================
@@ -691,50 +563,38 @@ onUnmounted(async () => {
    ============================================================================ */
 
 @media (max-width: 600px) {
-  .qr-scanner-card {
+  .qr-scanner-wrapper {
     max-width: 100%;
-    border-radius: 0 !important;
+    height: 350px;
+    border-radius: 0;
   }
 
-  .camera-island-container {
-    height: 300px;
+  .overlay-content {
+    padding: 16px;
   }
 
-  .scanner-header {
-    padding: 12px 16px;
-  }
-
-  .start-content {
-    padding: 1.5rem;
-  }
-
-  .start-button {
-    padding: 10px 24px !important;
-    font-size: 0.875rem !important;
-  }
-
-  .error-content {
-    padding: 1rem;
+  .activate-btn {
+    font-size: 1rem !important;
+    padding: 14px 24px !important;
   }
 }
 
 /* ============================================================================
-   LANDSCAPE MODE (MÓVILES EN HORIZONTAL)
+   LANDSCAPE MODE
    ============================================================================ */
 
 @media (max-width: 900px) and (orientation: landscape) {
-  .camera-island-container {
-    height: 250px;
+  .qr-scanner-wrapper {
+    height: 280px;
   }
 
-  .start-content {
-    padding: 1rem;
+  .overlay-content {
+    padding: 12px;
   }
 
-  .camera-icon-animated {
-    font-size: 48px !important;
+  .activate-btn {
+    font-size: 0.9rem !important;
+    padding: 12px 20px !important;
   }
 }
 </style>
-
-
