@@ -221,29 +221,37 @@
          ESTADO 3: VIEW_LOCATION (Inventario de Ubicación)
          ======================================================================== -->
     <div v-else-if="uiState === 'VIEW_LOCATION'" class="view-location-state">
-      <!-- Cabecera con Botón de Impresión -->
+      <!-- ====================================================================
+           HEADER DE UBICACIÓN (MEJORADO)
+           ==================================================================== -->
       <div class="d-flex align-center mb-4">
+        <!-- Navegación: Volver a SCANNING -->
         <v-btn
+          icon="mdi-arrow-left"
           variant="text"
-          icon
           @click="resetToScanning"
         >
-          <v-icon>mdi-arrow-left</v-icon>
         </v-btn>
 
+        <!-- Títulos: Nombre + Código de Ubicación -->
         <div class="flex-grow-1 ml-2">
           <div class="text-h6 font-weight-bold">{{ currentLocation?.nombre_ubicacion }}</div>
           <div class="text-caption text-grey">{{ currentLocation?.codigo_qr }}</div>
         </div>
 
-        <v-btn
-          variant="tonal"
-          color="secondary"
-          prepend-icon="mdi-printer"
-          @click="abrirModalImpresion"
-        >
-          Imprimir Etiquetas
-        </v-btn>
+        <!-- Acción Contextual: Botón de Impresión -->
+        <v-tooltip text="Imprimir Etiquetas de esta Sala" location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              icon="mdi-printer"
+              variant="text"
+              color="secondary"
+              v-bind="props"
+              @click="abrirModalImpresion"
+            >
+            </v-btn>
+          </template>
+        </v-tooltip>
       </div>
 
       <!-- Tabs: Inventario y Movimientos -->
@@ -363,87 +371,126 @@
          ======================================================================== -->
     <v-dialog v-model="dialogImpresion" fullscreen transition="dialog-bottom-transition">
       <v-card>
-        <!-- App Bar del Modal -->
+        <!-- ================================================================
+             FASE DE SELECCIÓN - HEADER DEL DIÁLOGO
+             ================================================================ -->
         <v-app-bar color="secondary" dark>
-          <v-btn icon @click="cerrarModalImpresion">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-          <v-toolbar-title>Imprimir Etiquetas QR</v-toolbar-title>
+          <!-- Botón Cerrar (X) -->
+          <v-btn icon="mdi-close" @click="cerrarModalImpresion"></v-btn>
+
+          <!-- Título -->
+          <v-toolbar-title>Seleccionar Activos a Imprimir</v-toolbar-title>
+
           <v-spacer></v-spacer>
-          <v-btn variant="text" @click="imprimirEtiquetas">
-            <v-icon start>mdi-printer</v-icon>
-            Imprimir Ahora
+
+          <!-- Botones de Acción -->
+          <v-btn
+            variant="text"
+            prepend-icon="mdi-checkbox-multiple-marked"
+            @click="seleccionarTodosActivos"
+            class="mr-2"
+          >
+            Seleccionar Todos
+          </v-btn>
+
+          <v-btn
+            variant="text"
+            prepend-icon="mdi-checkbox-multiple-blank-outline"
+            @click="deseleccionarTodosActivos"
+            class="mr-4"
+          >
+            Deseleccionar
+          </v-btn>
+
+          <!-- Botón Principal: IMPRIMIR AHORA -->
+          <v-btn
+            variant="elevated"
+            color="white"
+            prepend-icon="mdi-printer"
+            @click="imprimirEtiquetas"
+            :disabled="activosSeleccionados.length === 0"
+          >
+            <span style="color: #424242;">IMPRIMIR AHORA</span>
           </v-btn>
         </v-app-bar>
 
-        <!-- Contenido del Modal -->
+        <!-- ================================================================
+             CUERPO DEL DIÁLOGO - LISTA DE SELECCIÓN
+             ================================================================ -->
         <v-card-text class="pa-4">
-          <!-- Sección de Selección -->
-          <div class="selection-section mb-6">
-            <h3 class="text-h6 mb-3">
-              <v-icon start color="primary">mdi-checkbox-multiple-marked</v-icon>
-              Seleccionar Activos para Imprimir
-            </h3>
-
-            <v-card variant="outlined" class="mb-4">
-              <v-card-text>
-                <div class="d-flex align-center justify-space-between mb-3">
-                  <div>
-                    <v-checkbox
-                      v-model="seleccionarTodos"
-                      label="Seleccionar Todos"
-                      hide-details
-                      @change="toggleSeleccionarTodos"
-                    ></v-checkbox>
-                  </div>
-                  <v-chip color="primary" variant="tonal">
-                    {{ activosSeleccionados.length }} de {{ activosDeUbicacion.length }} seleccionados
-                  </v-chip>
+          <!-- Contador de Selección -->
+          <v-alert
+            type="info"
+            variant="tonal"
+            class="mb-4"
+            prominent
+          >
+            <div class="d-flex align-center">
+              <v-icon size="32" class="mr-3">mdi-information</v-icon>
+              <div>
+                <div class="text-h6">
+                  {{ activosSeleccionados.length }} de {{ activosDeUbicacion.length }} activos seleccionados
                 </div>
+                <div class="text-caption">
+                  Selecciona los activos que deseas imprimir. Las etiquetas se generarán automáticamente.
+                </div>
+              </div>
+            </div>
+          </v-alert>
 
-                <v-divider class="mb-3"></v-divider>
-
-                <!-- Lista de Activos con Checkboxes -->
-                <div class="activos-list" style="max-height: 300px; overflow-y: auto;">
-                  <v-checkbox
-                    v-for="activo in activosDeUbicacion"
-                    :key="activo.id"
-                    v-model="activosSeleccionados"
-                    :value="activo.id"
-                    hide-details
-                    class="mb-2"
-                  >
-                    <template v-slot:label>
-                      <div class="d-flex align-center justify-space-between" style="width: 100%;">
-                        <div>
-                          <span class="font-weight-bold">{{ activo.marca }} {{ activo.modelo }}</span>
-                          <br>
-                          <span class="text-caption text-grey">{{ activo.codigo_inventario }}</span>
-                        </div>
-                        <v-chip size="x-small" :color="getEstadoColor(activo.estado?.nombre_estado)">
-                          {{ activo.estado?.nombre_estado }}
-                        </v-chip>
+          <!-- Lista de Activos con Checkboxes -->
+          <v-card variant="outlined" class="mb-6">
+            <v-card-text>
+              <div class="activos-list" style="max-height: 400px; overflow-y: auto;">
+                <v-checkbox
+                  v-for="activo in activosDeUbicacion"
+                  :key="activo.id"
+                  v-model="activosSeleccionados"
+                  :value="activo.id"
+                  hide-details
+                  class="mb-3"
+                  color="secondary"
+                >
+                  <template v-slot:label>
+                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                      <div>
+                        <span class="font-weight-bold text-body-1">
+                          {{ activo.marca }} {{ activo.modelo }}
+                        </span>
+                        <br>
+                        <span class="text-caption text-grey">
+                          {{ activo.codigo_inventario }} | {{ activo.tipo?.nombre_tipo }}
+                        </span>
                       </div>
-                    </template>
-                  </v-checkbox>
-                </div>
-              </v-card-text>
-            </v-card>
-          </div>
+                      <v-chip size="small" :color="getEstadoColor(activo.estado?.nombre_estado)">
+                        {{ activo.estado?.nombre_estado }}
+                      </v-chip>
+                    </div>
+                  </template>
+                </v-checkbox>
+              </div>
+            </v-card-text>
+          </v-card>
 
-          <!-- Sección de Vista Previa -->
+          <!-- ============================================================
+               VISTA PREVIA DE ETIQUETAS
+               ============================================================ -->
           <div class="preview-section">
             <h3 class="text-h6 mb-3">
               <v-icon start color="secondary">mdi-eye</v-icon>
               Vista Previa de Etiquetas
             </h3>
 
-            <v-alert v-if="activosSeleccionados.length === 0" type="info" variant="tonal" class="mb-4">
-              <v-icon start>mdi-information</v-icon>
-              Selecciona al menos un activo para ver la vista previa.
+            <v-alert v-if="activosSeleccionados.length === 0" type="warning" variant="tonal" class="mb-4">
+              <v-icon start>mdi-alert</v-icon>
+              Selecciona al menos un activo para ver la vista previa de las etiquetas.
             </v-alert>
 
-            <!-- Área de Impresión (Oculta en pantalla, visible en impresión) -->
+            <!-- ========================================================
+                 ÁREA DE IMPRESIÓN
+                 - Visible en pantalla como vista previa
+                 - Renderizada para impresión con estilos @media print
+                 ======================================================== -->
             <div id="print-area" class="print-area">
               <div class="labels-grid">
                 <div
@@ -470,9 +517,12 @@
                         alt="QR Code"
                         class="qr-image"
                       />
+                      <div v-else class="qr-placeholder">
+                        <v-progress-circular indeterminate size="32"></v-progress-circular>
+                      </div>
                     </div>
 
-                    <!-- Código Vertical (Derecha) -->
+                    <!-- Código Vertical (Derecha del QR) -->
                     <div class="label-codigo-vertical">
                       <span class="codigo-vertical-text">
                         {{ getActivoById(activoId)?.codigo_inventario }}
@@ -766,6 +816,10 @@ function handleActivoClick(event, { item }) {
   uiState.value = 'VIEW_ASSET'
 }
 
+/**
+ * Abre el modal de impresión y genera los QR codes.
+ * Inicializa la selección con TODOS los activos de la ubicación actual.
+ */
 async function abrirModalImpresion() {
   // Resetear selección
   activosSeleccionados.value = []
@@ -777,8 +831,15 @@ async function abrirModalImpresion() {
 
   // Generar QR codes para todos los activos de la ubicación
   await generarQRCodes()
+
+  // Inicializar con todos los activos seleccionados
+  activosSeleccionados.value = activosDeUbicacion.value.map(a => a.id)
+  seleccionarTodos.value = true
 }
 
+/**
+ * Cierra el modal de impresión y limpia el estado.
+ */
 function cerrarModalImpresion() {
   dialogImpresion.value = false
   activosSeleccionados.value = []
@@ -786,11 +847,30 @@ function cerrarModalImpresion() {
   qrCodes.value = {}
 }
 
+/**
+ * Selecciona todos los activos de la ubicación.
+ */
+function seleccionarTodosActivos() {
+  activosSeleccionados.value = activosDeUbicacion.value.map(a => a.id)
+  seleccionarTodos.value = true
+}
+
+/**
+ * Deselecciona todos los activos.
+ */
+function deseleccionarTodosActivos() {
+  activosSeleccionados.value = []
+  seleccionarTodos.value = false
+}
+
+/**
+ * Toggle de selección de todos los activos (legacy - mantener por compatibilidad).
+ */
 function toggleSeleccionarTodos() {
   if (seleccionarTodos.value) {
-    activosSeleccionados.value = activosDeUbicacion.value.map(a => a.id)
+    seleccionarTodosActivos()
   } else {
-    activosSeleccionados.value = []
+    deseleccionarTodosActivos()
   }
 }
 
@@ -985,24 +1065,28 @@ onMounted(async () => {
 .labels-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 10px;
   padding: 1rem;
 }
 
 .label-item {
-  border: 2px dashed #333;
-  padding: 0.5rem;
+  border: 1px dashed black;
+  padding: 0.75rem;
   background: #ffffff;
   page-break-inside: avoid;
   break-inside: avoid;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
 }
 
 .label-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 80px;
+  gap: 0.75rem;
+  width: 100%;
+  height: 100%;
 }
 
 .label-nombre {
@@ -1010,18 +1094,21 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  min-width: 0; /* Permite que el texto se trunque si es necesario */
 }
 
 .nombre-text {
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: bold;
-  line-height: 1.2;
+  line-height: 1.3;
   margin-bottom: 0.25rem;
+  word-wrap: break-word;
 }
 
 .tipo-text {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   color: #666;
+  line-height: 1.2;
 }
 
 .label-qr {
@@ -1029,12 +1116,23 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .qr-image {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   display: block;
+}
+
+.qr-placeholder {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: 1px dashed #ccc;
 }
 
 .label-codigo-vertical {
@@ -1045,59 +1143,157 @@ onMounted(async () => {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transform: rotate(180deg);
-  padding: 0.25rem;
+  padding: 0 0.5rem;
+  height: 100px;
 }
 
 .codigo-vertical-text {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: bold;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.1em;
   white-space: nowrap;
+  color: #000;
 }
 
 /* ============================================================================
-   ESTILOS DE IMPRESIÓN - @media print
+   ESTILOS DE IMPRESIÓN - @media print (PIXEL PERFECT)
    ============================================================================ */
 
 @media print {
-  /* Ocultar todo excepto el área de impresión */
-  body * {
+  /* ========================================================================
+     RESET: Ocultar todo el body excepto el contenedor de etiquetas
+     ======================================================================== */
+  body {
     visibility: hidden;
+    margin: 0;
+    padding: 0;
   }
 
+  /* Hacer visible solo el área de impresión */
   #print-area,
   #print-area * {
     visibility: visible;
   }
 
+  /* Posicionar el área de impresión en la esquina superior izquierda */
   #print-area {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     background: white;
-    padding: 0;
+    padding: 1cm;
+    margin: 0;
     border: none;
+    border-radius: 0;
   }
 
+  /* ========================================================================
+     GRID LAYOUT: 3 columnas con gap de 10px
+     ======================================================================== */
   .labels-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-    padding: 0.5rem;
+    gap: 10px;
+    padding: 0;
+    margin: 0;
   }
 
+  /* ========================================================================
+     TARJETA DE ETIQUETA (Label Card)
+     ======================================================================== */
   .label-item {
-    border: 2px dashed #333;
-    padding: 0.5rem;
+    border: 1px dashed black;
+    padding: 0.75rem;
     background: white;
     page-break-inside: avoid;
     break-inside: avoid;
+    min-height: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
   }
 
-  /* Ajustar márgenes de página */
+  .label-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ========================================================================
+     TIPOGRAFÍA Y ORIENTACIÓN
+     ======================================================================== */
+
+  /* Izquierda: Nombre del Activo */
+  .label-nombre {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .nombre-text {
+    font-size: 11pt;
+    font-weight: bold;
+    line-height: 1.3;
+    margin-bottom: 0.25rem;
+    color: black;
+  }
+
+  .tipo-text {
+    font-size: 9pt;
+    color: #333;
+    line-height: 1.2;
+  }
+
+  /* Centro: QR Code */
+  .label-qr {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .qr-image {
+    width: 100px;
+    height: 100px;
+    display: block;
+  }
+
+  .qr-placeholder {
+    display: none; /* Ocultar placeholders en impresión */
+  }
+
+  /* Derecha: Texto Vertical (Código Inventario) */
+  .label-codigo-vertical {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 0 0.5rem;
+    height: 100px;
+  }
+
+  .codigo-vertical-text {
+    font-size: 9pt;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    color: black;
+  }
+
+  /* ========================================================================
+     CONFIGURACIÓN DE PÁGINA
+     ======================================================================== */
   @page {
-    margin: 0.5cm;
+    margin: 1cm;
     size: A4;
   }
 }
