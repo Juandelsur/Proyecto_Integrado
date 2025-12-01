@@ -7,9 +7,6 @@
          APP BAR SUPERIOR
          ==================================================================== -->
     <v-app-bar color="primary" density="comfortable" elevation="2">
-      <!-- Botón de menú lateral -->
-      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-
       <!-- Título -->
       <v-app-bar-title>
         <span class="text-h6 font-weight-bold">SCA Hospital</span>
@@ -22,39 +19,6 @@
         <v-icon>mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
-
-    <!-- ====================================================================
-         NAVIGATION DRAWER (MENÚ LATERAL)
-         ==================================================================== -->
-    <v-navigation-drawer v-model="drawer" temporary>
-      <!-- Header del drawer con info del usuario -->
-      <v-list>
-        <v-list-item
-          :prepend-avatar="`https://ui-avatars.com/api/?name=${userName}&background=1565C0&color=fff`"
-          :title="userName"
-          :subtitle="userRole"
-        ></v-list-item>
-      </v-list>
-
-      <v-divider></v-divider>
-
-      <!-- Opciones de navegación -->
-      <v-list density="compact" nav>
-        <v-list-item
-          prepend-icon="mdi-plus-circle"
-          title="Crear Nuevo Activo"
-          value="crear"
-          @click="navigateTo('/tecnico/crear')"
-        ></v-list-item>
-
-        <v-list-item
-          prepend-icon="mdi-pencil"
-          title="Editar Activos"
-          value="editar"
-          @click="navigateTo('/tecnico/editar-buscar')"
-        ></v-list-item>
-      </v-list>
-    </v-navigation-drawer>
 
     <!-- ====================================================================
          CONTENIDO PRINCIPAL
@@ -100,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
@@ -114,19 +78,7 @@ const authStore = useAuthStore()
 // ============================================================================
 // STATE
 // ============================================================================
-const drawer = ref(false)
 const activeTab = ref('home')
-
-// ============================================================================
-// COMPUTED
-// ============================================================================
-const userName = computed(() => {
-  return authStore.user?.nombre_completo || authStore.user?.username || 'Usuario'
-})
-
-const userRole = computed(() => {
-  return authStore.user?.rol?.nombre_rol || 'Técnico'
-})
 
 // ============================================================================
 // WATCHERS - Sincronizar tab activo con la ruta
@@ -150,7 +102,6 @@ watch(
  */
 function navigateTo(path) {
   router.push(path)
-  drawer.value = false // Cerrar drawer al navegar
 }
 
 /**
