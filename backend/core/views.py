@@ -32,7 +32,8 @@ from .permissions import (
     IsAdminUser,
     IsJefeOrAdminReadOnly,
     IsTecnicoOperativo,
-    CanDeleteActivo
+    CanDeleteActivo,
+    IsAdminOrReadOnly
 )
 
 from .models import (
@@ -141,24 +142,28 @@ class TipoEquipoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Tipos de Equipo.
 
-    SEGURIDAD: Solo Administradores pueden gestionar tipos de equipo (maestro crítico).
+    SEGURIDAD - CONTROL DE ACCESO:
 
-    Permisos:
-    - Administrador: CRUD completo
-    - Técnico: Acceso denegado
-    - Jefe: Acceso denegado
+    Permisos por rol:
+    - Administrador: CRUD completo (puede crear, editar, eliminar tipos de equipo)
+    - Técnico: Solo lectura (GET) - Necesita ver tipos para registrar activos
+    - Jefe de Departamento: Solo lectura (GET) - Puede consultar para supervisión
+
+    JUSTIFICACIÓN:
+    - Los Técnicos NECESITAN ver tipos de equipo para poder registrar nuevos activos
+    - Solo Admin puede modificar maestros (integridad de datos)
 
     Endpoints:
-    - GET /api/tipos-equipo/ - Listar todos los tipos de equipo
-    - POST /api/tipos-equipo/ - Crear un nuevo tipo de equipo
-    - GET /api/tipos-equipo/{id}/ - Obtener un tipo de equipo específico
-    - PUT /api/tipos-equipo/{id}/ - Actualizar un tipo de equipo completo
-    - PATCH /api/tipos-equipo/{id}/ - Actualizar parcialmente un tipo de equipo
-    - DELETE /api/tipos-equipo/{id}/ - Eliminar un tipo de equipo
+    - GET /api/tipos-equipo/ - Listar todos los tipos de equipo (Admin, Técnico, Jefe)
+    - POST /api/tipos-equipo/ - Crear un nuevo tipo de equipo (solo Admin)
+    - GET /api/tipos-equipo/{id}/ - Obtener un tipo de equipo específico (Admin, Técnico, Jefe)
+    - PUT /api/tipos-equipo/{id}/ - Actualizar un tipo de equipo completo (solo Admin)
+    - PATCH /api/tipos-equipo/{id}/ - Actualizar parcialmente un tipo de equipo (solo Admin)
+    - DELETE /api/tipos-equipo/{id}/ - Eliminar un tipo de equipo (solo Admin)
     """
     queryset = TipoEquipo.objects.all()
     serializer_class = TipoEquipoSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 
 @extend_schema_view(
@@ -173,24 +178,28 @@ class EstadoActivoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Estados de Activo.
 
-    SEGURIDAD: Solo Administradores pueden gestionar estados de activo (maestro crítico).
+    SEGURIDAD - CONTROL DE ACCESO:
 
-    Permisos:
-    - Administrador: CRUD completo
-    - Técnico: Acceso denegado
-    - Jefe: Acceso denegado
+    Permisos por rol:
+    - Administrador: CRUD completo (puede crear, editar, eliminar estados)
+    - Técnico: Solo lectura (GET) - Necesita ver estados para actualizar activos
+    - Jefe de Departamento: Solo lectura (GET) - Puede consultar para supervisión
+
+    JUSTIFICACIÓN:
+    - Los Técnicos NECESITAN ver estados para poder actualizar el estado de los activos
+    - Solo Admin puede modificar maestros (integridad de datos)
 
     Endpoints:
-    - GET /api/estados-activo/ - Listar todos los estados de activo
-    - POST /api/estados-activo/ - Crear un nuevo estado de activo
-    - GET /api/estados-activo/{id}/ - Obtener un estado de activo específico
-    - PUT /api/estados-activo/{id}/ - Actualizar un estado de activo completo
-    - PATCH /api/estados-activo/{id}/ - Actualizar parcialmente un estado de activo
-    - DELETE /api/estados-activo/{id}/ - Eliminar un estado de activo
+    - GET /api/estados-activo/ - Listar todos los estados de activo (Admin, Técnico, Jefe)
+    - POST /api/estados-activo/ - Crear un nuevo estado de activo (solo Admin)
+    - GET /api/estados-activo/{id}/ - Obtener un estado de activo específico (Admin, Técnico, Jefe)
+    - PUT /api/estados-activo/{id}/ - Actualizar un estado de activo completo (solo Admin)
+    - PATCH /api/estados-activo/{id}/ - Actualizar parcialmente un estado de activo (solo Admin)
+    - DELETE /api/estados-activo/{id}/ - Eliminar un estado de activo (solo Admin)
     """
     queryset = EstadoActivo.objects.all()
     serializer_class = EstadoActivoSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
 
 
@@ -210,26 +219,30 @@ class UbicacionViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de Ubicaciones.
 
-    SEGURIDAD: Solo Administradores pueden gestionar ubicaciones (maestro crítico).
+    SEGURIDAD - CONTROL DE ACCESO:
 
-    Permisos:
-    - Administrador: CRUD completo
-    - Técnico: Acceso denegado
-    - Jefe: Acceso denegado
+    Permisos por rol:
+    - Administrador: CRUD completo (puede crear, editar, eliminar ubicaciones)
+    - Técnico: Solo lectura (GET) - Necesita ver ubicaciones para movilizar activos
+    - Jefe de Departamento: Solo lectura (GET) - Puede consultar para supervisión
+
+    JUSTIFICACIÓN:
+    - Los Técnicos NECESITAN ver ubicaciones para poder movilizar activos entre ellas
+    - Solo Admin puede modificar maestros (integridad de datos)
 
     OPTIMIZACIÓN: Usa select_related('departamento') para evitar N+1 queries.
 
     Endpoints:
-    - GET /api/ubicaciones/ - Listar todas las ubicaciones
-    - POST /api/ubicaciones/ - Crear una nueva ubicación
-    - GET /api/ubicaciones/{id}/ - Obtener una ubicación específica
-    - PUT /api/ubicaciones/{id}/ - Actualizar una ubicación completa
-    - PATCH /api/ubicaciones/{id}/ - Actualizar parcialmente una ubicación
-    - DELETE /api/ubicaciones/{id}/ - Eliminar una ubicación
+    - GET /api/ubicaciones/ - Listar todas las ubicaciones (Admin, Técnico, Jefe)
+    - POST /api/ubicaciones/ - Crear una nueva ubicación (solo Admin)
+    - GET /api/ubicaciones/{id}/ - Obtener una ubicación específica (Admin, Técnico, Jefe)
+    - PUT /api/ubicaciones/{id}/ - Actualizar una ubicación completa (solo Admin)
+    - PATCH /api/ubicaciones/{id}/ - Actualizar parcialmente una ubicación (solo Admin)
+    - DELETE /api/ubicaciones/{id}/ - Eliminar una ubicación (solo Admin)
     """
     queryset = Ubicacion.objects.select_related('departamento').all()
     serializer_class = UbicacionSerializer
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    permission_classes = [IsAuthenticated, IsAdminOrReadOnly]
 
     # FILTROS Y BÚSQUEDA
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

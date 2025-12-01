@@ -48,46 +48,48 @@ class IsAdminUser(permissions.BasePermission):
 
 class IsJefeOrAdminReadOnly(permissions.BasePermission):
     """
-    Permiso para Jefes de Departamento (solo lectura) y Administradores (acceso total).
-    
+    Permiso para Técnicos, Jefes de Departamento (solo lectura) y Administradores (acceso total).
+
     Reglas de negocio:
     - Administrador: Acceso completo (GET, POST, PUT, PATCH, DELETE)
+    - Técnico: Solo métodos seguros (GET, HEAD, OPTIONS) - Necesita ver historial
     - Jefe de Departamento: Solo métodos seguros (GET, HEAD, OPTIONS)
     - Otros roles: Acceso denegado
-    
+
     Casos de uso:
+    - Técnicos pueden consultar historial de movimientos para auditoría
     - Jefes pueden consultar activos para supervisión
     - Jefes pueden ver auditoría y historial para control
-    - Jefes NO pueden modificar datos (principio de segregación de funciones)
-    
+    - Técnicos y Jefes NO pueden modificar datos (principio de segregación de funciones)
+
     Retorna:
-        True: Si es Admin (cualquier método) o Jefe (solo lectura)
+        True: Si es Admin (cualquier método) o Técnico/Jefe (solo lectura)
         False: En cualquier otro caso
     """
-    
+
     def has_permission(self, request, view):
         # Verificar autenticación
         if not request.user or not request.user.is_authenticated:
             return False
-        
+
         # Verificar existencia de rol
         if not hasattr(request.user, 'rol') or not request.user.rol:
             return False
-        
+
         rol_nombre = request.user.rol.nombre_rol
-        
+
         # Administrador: acceso total
         if rol_nombre == 'Administrador':
             return True
-        
-        # Jefe de Departamento: solo lectura (métodos seguros)
-        if rol_nombre == 'Jefe de Departamento':
+
+        # Técnico y Jefe de Departamento: solo lectura (métodos seguros)
+        if rol_nombre in ['Técnico', 'Jefe de Departamento']:
             return request.method in permissions.SAFE_METHODS
-        
+
         # Otros roles: denegado
         return False
-    
-    message = 'Solo Administradores y Jefes de Departamento (lectura) tienen acceso.'
+
+    message = 'Solo Administradores pueden modificar este recurso. Técnicos y Jefes tienen acceso de solo lectura.'
 
 
 class IsTecnicoOperativo(permissions.BasePermission):
@@ -142,38 +144,84 @@ class IsTecnicoOperativo(permissions.BasePermission):
 class CanDeleteActivo(permissions.BasePermission):
     """
     Permiso específico para operaciones DELETE.
-    
+
     Reglas de negocio:
     - Solo Administradores pueden eliminar recursos
     - Técnicos y Jefes NO pueden eliminar (control de auditoría)
     - Para métodos distintos a DELETE, este permiso no aplica (retorna True)
-    
+
     Casos de uso:
     - Prevenir eliminación accidental de activos por técnicos
     - Mantener trazabilidad completa (solo Admin puede eliminar registros)
     - Cumplir con políticas de auditoría hospitalaria
-    
+
     IMPORTANTE: Este permiso debe usarse en combinación con otros permisos.
     Se evalúa DESPUÉS de los permisos de rol para validar DELETE específicamente.
-    
+
     Retorna:
         True: Si el método NO es DELETE, o si es DELETE y el usuario es Admin
         False: Si es DELETE y el usuario NO es Admin
     """
-    
+
     def has_permission(self, request, view):
         # Si no es DELETE, permitir (otros permisos ya validaron el acceso)
         if request.method != 'DELETE':
             return True
-        
+
         # Si es DELETE, verificar que sea Administrador
         if not request.user or not request.user.is_authenticated:
             return False
-        
+
         if not hasattr(request.user, 'rol') or not request.user.rol:
             return False
-        
+
         return request.user.rol.nombre_rol == 'Administrador'
-    
+
     message = 'Solo los Administradores pueden eliminar recursos.'
+
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    """
+    Permiso para maestros: Admin puede modificar, Técnicos y Jefes solo lectura.
+
+    Reglas de negocio:
+    - Administrador: Acceso completo (GET, POST, PUT, PATCH, DELETE)
+    - Técnico: Solo lectura (GET, HEAD, OPTIONS) - Necesita ver maestros para operar
+    - Jefe de Departamento: Solo lectura (GET, HEAD, OPTIONS)
+    - Otros roles: Acceso denegado
+
+    Casos de uso:
+    - Técnicos necesitan ver ubicaciones para movilizar activos
+    - Técnicos necesitan ver tipos de equipo para registrar activos
+    - Técnicos necesitan ver estados para actualizar activos
+    - Solo Admin puede modificar maestros (integridad de datos)
+
+    Retorna:
+        True: Si es Admin (cualquier método) o Técnico/Jefe (solo lectura)
+        False: En cualquier otro caso
+    """
+
+    def has_permission(self, request, view):
+        # Verificar autenticación
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        # Verificar existencia de rol
+        if not hasattr(request.user, 'rol') or not request.user.rol:
+            return False
+
+        rol_nombre = request.user.rol.nombre_rol
+
+        # Administrador: acceso total
+        if rol_nombre == 'Administrador':
+            return True
+
+        # Técnico y Jefe: solo lectura (métodos seguros)
+        if rol_nombre in ['Técnico', 'Jefe de Departamento']:
+            return request.method in permissions.SAFE_METHODS
+
+        # Otros roles: denegado
+        return False
+
+    message = 'Solo Administradores pueden modificar este recurso. Técnicos y Jefes tienen acceso de solo lectura.'
 
