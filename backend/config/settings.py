@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     'rest_framework',           # Django REST Framework
     'rest_framework_simplejwt', # JWT Authentication
     'drf_spectacular',          # API Documentation (Swagger/OpenAPI)
+    'django_filters',           # Filtros para DRF
 
     # Local Apps
     'core',  # App principal con modelos, serializers, views, admin

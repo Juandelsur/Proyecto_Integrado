@@ -18,13 +18,14 @@ Sistema de Permisos por Rol:
 - Jefe de Departamento: Solo lectura en activos, historial y auditoría
 """
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django_filters.rest_framework import DjangoFilterBackend
 
 # Importar permisos personalizados RBAC
 from .permissions import (
@@ -229,6 +230,13 @@ class UbicacionViewSet(viewsets.ModelViewSet):
     queryset = Ubicacion.objects.select_related('departamento').all()
     serializer_class = UbicacionSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
+
+    # FILTROS Y BÚSQUEDA
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['departamento']
+    search_fields = ['nombre_ubicacion', 'codigo_qr']
+    ordering_fields = ['nombre_ubicacion', 'codigo_qr']
+    ordering = ['nombre_ubicacion']
 
 
 @extend_schema_view(
@@ -446,6 +454,13 @@ class ActivoViewSet(viewsets.ModelViewSet):
     # - IsJefeOrAdminReadOnly: Permite GET a Jefes
     # - CanDeleteActivo: Bloquea DELETE excepto para Admins
     permission_classes = [IsAuthenticated, IsTecnicoOperativo | IsJefeOrAdminReadOnly, CanDeleteActivo]
+
+    # FILTROS Y BÚSQUEDA
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['ubicacion_actual', 'tipo', 'estado']
+    search_fields = ['codigo_inventario', 'numero_serie', 'marca', 'modelo']
+    ordering_fields = ['fecha_alta', 'codigo_inventario', 'marca']
+    ordering = ['-fecha_alta']
 
     @extend_schema(
         request=MovilizacionInputSerializer,
@@ -746,6 +761,13 @@ class HistorialMovimientoViewSet(viewsets.ModelViewSet):
 
     # RBAC: Jefes y Técnicos pueden consultar, solo Admin puede modificar
     permission_classes = [IsAuthenticated, IsJefeOrAdminReadOnly]
+
+    # FILTROS Y BÚSQUEDA
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['activo', 'usuario_registra', 'ubicacion_origen', 'ubicacion_destino', 'tipo_movimiento']
+    search_fields = ['activo__codigo_inventario', 'activo__marca', 'activo__modelo', 'comentarios']
+    ordering_fields = ['fecha_movimiento', 'tipo_movimiento']
+    ordering = ['-fecha_movimiento']
 
 
 @extend_schema_view(

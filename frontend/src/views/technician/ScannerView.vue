@@ -12,8 +12,8 @@
 
   ESTADOS:
   1. SCANNING - Interfaz de captura (estado inicial)
-  2. VIEW_ASSET - Detalle de un activo (prefijo A-)
-  3. VIEW_LOCATION - Inventario de una ubicación (prefijo U-)
+  2. VIEW_ASSET - Detalle de un activo (prefijo INV-)
+  3. VIEW_LOCATION - Inventario de una ubicación (prefijo LOC-)
 
   CARACTERÍSTICAS:
   - Transiciones instantáneas entre estados
@@ -59,7 +59,7 @@
         prepend-inner-icon="mdi-barcode-scan"
         variant="outlined"
         density="comfortable"
-        hint="Ingresa A-XXX (Activo) o U-XXX (Ubicación)"
+        hint="Ingresa INV-XX-XXXXXX (Activo) o LOC-XXXXXX (Ubicación)"
         persistent-hint
         @keyup.enter="handleManualSubmit"
       >
@@ -669,13 +669,13 @@ function handleManualSubmit() {
     return
   }
 
-  // Evaluar prefijo
-  if (code.startsWith('A-')) {
+  // Evaluar prefijo según formato del backend
+  if (code.startsWith('INV-')) {
     transitionToAsset(code)
-  } else if (code.startsWith('U-')) {
+  } else if (code.startsWith('LOC-')) {
     transitionToLocation(code)
   } else {
-    showErrorMessage('Código inválido. Debe comenzar con A- (Activo) o U- (Ubicación)')
+    showErrorMessage('Código inválido. Debe comenzar con INV- (Activo) o LOC- (Ubicación)')
   }
 }
 
