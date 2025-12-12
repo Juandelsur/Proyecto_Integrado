@@ -1,0 +1,74 @@
+================================================================================
+🚀 INICIO RÁPIDO - DOCKER POSTGRESQL LOCAL
+================================================================================
+
+⚠️  IMPORTANTE: Ejecuta todos los comandos desde la carpeta sca-hospital
+
+📋 PASO 1: Crear archivo .env.local
+────────────────────────────────────────────────────────────────────────────────
+
+Opción A - Copiar template (más fácil):
+    cp backend/env.local.template backend/.env.local
+
+Opción B - Usar script automático:
+    ./setup-docker.sh              (Linux/macOS)
+    setup-docker.bat               (Windows)
+
+
+📋 PASO 2: Levantar servicios
+────────────────────────────────────────────────────────────────────────────────
+
+Si usaste el script, ya está todo listo. Si no:
+
+    docker-compose up -d
+
+
+📋 PASO 3: Configurar Django
+────────────────────────────────────────────────────────────────────────────────
+
+    docker-compose exec backend python manage.py migrate
+    docker-compose exec backend python manage.py createsuperuser
+    docker-compose exec backend python manage.py seed_hospital
+
+
+================================================================================
+✅ LISTO - Accede a:
+================================================================================
+
+    🌐 Frontend:    http://localhost:5173
+    🔧 API:         http://localhost:8000/api/
+    👤 Admin:       http://localhost:8000/admin/
+    📚 Docs:        http://localhost:8000/api/schema/swagger-ui/
+
+
+================================================================================
+🛠️ COMANDOS ÚTILES
+================================================================================
+
+    Ver logs:
+        docker-compose logs -f
+
+    Detener:
+        docker-compose down
+
+    Reiniciar:
+        docker-compose restart
+
+    Ejecutar comando Django:
+        docker-compose exec backend python manage.py <comando>
+
+    Acceder a PostgreSQL:
+        docker-compose exec db psql -U sca_user -d sca_hospital
+
+
+================================================================================
+📚 MÁS INFORMACIÓN
+================================================================================
+
+    README_DOCKER.md               - Guía rápida (en esta carpeta)
+    ../DOCKER_QUICK_START.md       - Quick start
+    ../DOCKER_SETUP_COMPLETE.md    - Guía completa
+
+
+================================================================================
+
