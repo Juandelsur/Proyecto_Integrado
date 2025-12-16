@@ -1,502 +1,195 @@
 <template>
-  <div class="login-view">
-    <div class="login-container">
-      <!-- Tarjeta de Login -->
-      <div class="login-card">
-        <!-- Logo e Icono -->
-        <div class="logo-section">
-          <div class="logo-icon">
-            <i class="bi bi-chat-square-text-fill"></i>
-          </div>
-          <h1 class="app-title">SCA</h1>
-          <p class="app-subtitle">Sistema de Control de Equipos Informáticos</p>
-        </div>
+  <v-container fluid class="fill-height login-container">
+    <v-row align="center" justify="center">
+      <v-col cols="12" sm="8" md="4">
+        <v-card elevation="8" class="login-card">
+          <!-- Header -->
+          <v-card-title class="text-center pa-6 bg-primary">
+            <div class="d-flex flex-column align-center w-100">
+              <v-icon size="64" color="white" class="mb-3">mdi-hospital-building</v-icon>
+              <h2 class="text-h4 text-white font-weight-bold">SCA Hospital</h2>
+              <p class="text-subtitle-1 text-white mt-2">Sistema de Control de Activos</p>
+            </div>
+          </v-card-title>
 
-        <!-- Formulario de Login -->
-        <form @submit.prevent="handleLogin" class="login-form">
-          <!-- Campo Usuario -->
-          <div class="form-group">
-            <label for="username" class="form-label">Nombre de Usuario</label>
-            <div class="input-group">
-              <span class="input-icon">
-                <i class="bi bi-person-fill"></i>
-              </span>
-              <input
-                id="username"
+          <!-- Formulario de Login -->
+          <v-card-text class="pa-8">
+            <v-form @submit.prevent="handleLogin" ref="loginForm">
+              <!-- Campo Usuario -->
+              <v-text-field
                 v-model="username"
-                type="text"
-                class="form-control"
-                placeholder="Ej: tecnico1, admin"
-                required
-                autocomplete="username"
+                label="Usuario"
+                prepend-inner-icon="mdi-account"
+                variant="outlined"
+                density="comfortable"
+                :rules="[rules.required]"
                 :disabled="loading"
-              />
-            </div>
-          </div>
+                class="mb-4"
+              ></v-text-field>
 
-          <!-- Campo Contraseña -->
-          <div class="form-group">
-            <label for="password" class="form-label">Contraseña</label>
-            <div class="input-group">
-              <span class="input-icon">
-                <i class="bi bi-lock-fill"></i>
-              </span>
-              <input
-                id="password"
+              <!-- Campo Contraseña -->
+              <v-text-field
                 v-model="password"
-                type="password"
-                class="form-control"
-                placeholder="••••••••"
-                required
-                autocomplete="current-password"
+                label="Contraseña"
+                prepend-inner-icon="mdi-lock"
+                :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
+                :type="showPassword ? 'text' : 'password'"
+                @click:append-inner="showPassword = !showPassword"
+                variant="outlined"
+                density="comfortable"
+                :rules="[rules.required]"
                 :disabled="loading"
-              />
-            </div>
-          </div>
+              ></v-text-field>
 
-          <!-- Link "Olvidé mi contraseña" -->
-          <div class="forgot-password">
-            <a href="#" @click.prevent="handleForgotPassword">Olvidé mi contraseña</a>
-          </div>
+              <!-- Mensaje de Error -->
+              <v-alert
+                v-if="errorMessage"
+                type="error"
+                variant="tonal"
+                class="mb-4"
+                closable
+                @click:close="errorMessage = ''"
+              >
+                {{ errorMessage }}
+              </v-alert>
 
-          <!-- Mensaje de Error -->
-          <div v-if="errorMessage" class="alert alert-danger" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            {{ errorMessage }}
-          </div>
+              <!-- Botón Iniciar Sesión -->
+              <v-btn
+                type="submit"
+                color="primary"
+                size="large"
+                block
+                :loading="loading"
+                class="text-none font-weight-bold"
+              >
+                <v-icon left class="mr-2">mdi-login</v-icon>
+                Iniciar Sesión
+              </v-btn>
+            </v-form>
+          </v-card-text>
 
-          <!-- Botón Ingresar -->
-          <button type="submit" class="btn btn-primary btn-login w-100" :disabled="loading">
-            <span v-if="loading">
-              <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-              Ingresando...
-            </span>
-            <span v-else>Ingresar</span>
-          </button>
-        </form>
-
-        <!-- Footer -->
-        <div class="login-footer">
-          <p>© 2025 Hospital IT Asset Control System</p>
-        </div>
-      </div>
-    </div>
-  </div>
+          <!-- Footer con usuarios de prueba -->
+          <v-divider></v-divider>
+          <v-card-text class="pa-4 bg-grey-lighten-4">
+            <p class="text-subtitle-2 text-center mb-2 font-weight-bold">
+              🔑 Usuarios de Prueba (Desarrollo)
+            </p>
+            <v-list density="compact" class="bg-transparent">
+              <v-list-item density="compact">
+                <template v-slot:prepend>
+                  <v-icon size="small" color="error">mdi-shield-crown</v-icon>
+                </template>
+                <v-list-item-title class="text-caption">
+                  <strong>admin</strong> / admin123 → Administrador
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item density="compact">
+                <template v-slot:prepend>
+                  <v-icon size="small" color="info">mdi-account-wrench</v-icon>
+                </template>
+                <v-list-item-title class="text-caption">
+                  <strong>tec</strong> / tec123 → Técnico
+                </v-list-item-title>
+              </v-list-item>
+              <v-list-item density="compact">
+                <template v-slot:prepend>
+                  <v-icon size="small" color="success">mdi-account-tie</v-icon>
+                </template>
+                <v-list-item-title class="text-caption">
+                  <strong>jefe</strong> / jefe123 → Jefe de Departamento
+                </v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import apiClient from '@/services/api'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+// ============================================================================
+// COMPOSABLES
+// ============================================================================
 
 const router = useRouter()
-const route = useRoute()
+const authStore = useAuthStore()
 
-// Estado del formulario
+// ============================================================================
+// STATE
+// ============================================================================
+
 const username = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const loginForm = ref(null)
 
-/**
- * Maneja el envío del formulario de login
- */
+// ============================================================================
+// VALIDATION RULES
+// ============================================================================
+
+const rules = {
+  required: (value) => !!value || 'Este campo es requerido'
+}
+
+// ============================================================================
+// METHODS
+// ============================================================================
+
 async function handleLogin() {
+  // Validar formulario
+  const { valid } = await loginForm.value.validate()
+  if (!valid) return
+
   loading.value = true
   errorMessage.value = ''
 
-  console.log('🔐 Iniciando login...')
-  console.log('📝 Username:', username.value)
-
   try {
-    // 1. Llamar al endpoint de autenticación
-    console.log('📡 POST /api/auth/token/')
-    const loginResponse = await apiClient.post('/api/auth/token/', {
-      username: username.value,  // ✅ Usar username (no email)
-      password: password.value
-    })
+    const result = await authStore.login(username.value, password.value)
 
-    console.log('✅ Login exitoso - Tokens recibidos')
+    if (result.success) {
+      // Redirigir según el rol
+      const role = authStore.userRole
 
-    // 2. Guardar tokens en localStorage
-    const { access, refresh } = loginResponse.data
-    localStorage.setItem('access_token', access)
-    localStorage.setItem('refresh_token', refresh)
-    console.log('💾 Tokens guardados en localStorage')
-
-    // 3. Obtener información del usuario (incluyendo rol)
-    console.log('📡 GET /api/usuarios/me/')
-    const userResponse = await apiClient.get('/api/usuarios/me/')
-    const userData = userResponse.data
-
-    console.log('👤 Datos del usuario:', userData)
-    console.log('🎭 Rol detectado:', userData.rol?.nombre_rol)
-
-    // 4. Guardar información del usuario
-    localStorage.setItem('user', JSON.stringify(userData))
-
-    // 5. Determinar redirección según el rol (LÓGICA ROBUSTA)
-    const rolNombre = userData.rol?.nombre_rol || ''
-    const rolNormalizado = rolNombre.toLowerCase().trim()
-
-    console.log('🔍 Rol normalizado:', rolNormalizado)
-
-    let redirectPath = '/' // Fallback por defecto
-
-    // Lógica de redirección robusta con normalización
-    if (rolNormalizado.includes('técnico') || rolNormalizado.includes('tecnico')) {
-      redirectPath = '/tecnico/home'
-      console.log('🎯 Redirigiendo a: /tecnico/home (Técnico)')
-    } else if (rolNormalizado.includes('administrador') || rolNormalizado.includes('admin')) {
-      redirectPath = '/inventario'
-      console.log('🎯 Redirigiendo a: /inventario (Administrador)')
-    } else if (rolNormalizado.includes('jefe')) {
-      redirectPath = '/home'
-      console.log('🎯 Redirigiendo a: /home (Jefe de Departamento)')
-    } else {
-      // Fallback: Si no se puede determinar el rol
-      console.warn('⚠️ No se pudo determinar el rol del usuario')
-      errorMessage.value = '⚠️ No se pudo determinar el perfil del usuario. Contacta al administrador.'
-
-      // Limpiar tokens y no redirigir
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('user')
-      return
-    }
-
-    // 6. Redirigir (usar query redirect si existe)
-    const finalRedirect = route.query.redirect || redirectPath
-    console.log('🚀 Redirección final:', finalRedirect)
-
-    await router.push(finalRedirect)
-    console.log('✅ Redirección completada')
-
-  } catch (error) {
-    // Manejo de errores
-    console.error('❌ Error en login:', error)
-
-    if (error.response) {
-      // Error del servidor
-      console.error('📛 Status:', error.response.status)
-      console.error('📛 Data:', error.response.data)
-
-      if (error.response.status === 401) {
-        errorMessage.value = '❌ Usuario o contraseña incorrectos'
-      } else if (error.response.status === 400) {
-        errorMessage.value = '⚠️ Por favor, completa todos los campos correctamente'
-      } else if (error.response.status === 404) {
-        errorMessage.value = '❌ Endpoint no encontrado. Verifica la configuración del backend'
+      if (role === 'Administrador') {
+        router.push('/admin')
+      } else if (role === 'Técnico') {
+        router.push('/tecnico')
+      } else if (role === 'Jefe de Departamento') {
+        router.push('/jefe')
       } else {
-        errorMessage.value = '❌ Error del servidor. Intenta de nuevo más tarde'
+        router.push('/')
       }
-    } else if (error.request) {
-      // No hubo respuesta del servidor
-      console.error('📛 No response from server')
-      errorMessage.value = '🔌 No se pudo conectar con el servidor. Verifica tu conexión'
     } else {
-      // Error al configurar la petición
-      console.error('📛 Request setup error:', error.message)
-      errorMessage.value = '❌ Error inesperado. Por favor, intenta de nuevo'
+      errorMessage.value = result.message || 'Error al iniciar sesión'
     }
+  } catch (error) {
+    console.error('Error en login:', error)
+    errorMessage.value = 'Error inesperado al iniciar sesión'
   } finally {
     loading.value = false
   }
 }
-
-/**
- * Maneja el click en "Olvidé mi contraseña"
- */
-function handleForgotPassword() {
-  alert('Funcionalidad de recuperación de contraseña no implementada aún.\nContacta al administrador del sistema.')
-}
 </script>
 
 <style scoped>
-/* ============================================================================
-   CONTENEDOR PRINCIPAL - FONDO AZUL CORPORATIVO
-   ============================================================================ */
-
-.login-view {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%);
-  padding: 1rem;
-}
-
 .login-container {
-  width: 100%;
-  max-width: 420px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
 }
-
-/* ============================================================================
-   TARJETA DE LOGIN - FONDO BLANCO, BORDES REDONDEADOS
-   ============================================================================ */
 
 .login-card {
-  background: white;
-  border-radius: 20px;
-  padding: 2.5rem 2rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border-radius: 16px !important;
+  overflow: hidden;
 }
 
-/* ============================================================================
-   LOGO E ICONO
-   ============================================================================ */
-
-.logo-section {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.logo-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 80px;
-  background: #0d47a1;
-  border-radius: 16px;
-  margin-bottom: 1rem;
-}
-
-.logo-icon i {
-  font-size: 2.5rem;
-  color: white;
-}
-
-.app-title {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin-bottom: 0.5rem;
-  letter-spacing: 2px;
-}
-
-.app-subtitle {
-  font-size: 0.95rem;
-  color: #666;
-  margin: 0;
-  line-height: 1.4;
-}
-
-/* ============================================================================
-   FORMULARIO
-   ============================================================================ */
-
-.login-form {
-  margin-bottom: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1.25rem;
-}
-
-.form-label {
-  display: block;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0.5rem;
-}
-
-/* ============================================================================
-   INPUT GROUP CON ICONO
-   ============================================================================ */
-
-.input-group {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.input-icon {
-  position: absolute;
-  left: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #999;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.input-icon i {
-  font-size: 1.1rem;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.875rem 1rem 0.875rem 3rem;
-  font-size: 1rem;
-  background: #f0f2f5;
-  border: 2px solid transparent;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-
-.form-control:focus {
-  outline: none;
-  background: white;
-  border-color: #0d47a1;
-  box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1);
-}
-
-.form-control:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.form-control::placeholder {
-  color: #aaa;
-}
-
-/* ============================================================================
-   LINK "OLVIDÉ MI CONTRASEÑA"
-   ============================================================================ */
-
-.forgot-password {
-  text-align: right;
-  margin-bottom: 1.5rem;
-}
-
-.forgot-password a {
-  font-size: 0.9rem;
-  color: #0d47a1;
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.3s;
-}
-
-.forgot-password a:hover {
-  color: #1565c0;
-  text-decoration: underline;
-}
-
-/* ============================================================================
-   ALERTA DE ERROR
-   ============================================================================ */
-
-.alert {
-  padding: 0.875rem 1rem;
-  margin-bottom: 1.25rem;
-  border-radius: 10px;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-}
-
-.alert-danger {
-  background: #fee;
-  color: #c33;
-  border: 1px solid #fcc;
-}
-
-/* ============================================================================
-   BOTÓN INGRESAR - ANCHO COMPLETO, AZUL OSCURO
-   ============================================================================ */
-
-.btn-login {
-  padding: 1rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  background: #0d47a1;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(13, 71, 161, 0.3);
-}
-
-.btn-login:hover:not(:disabled) {
-  background: #1565c0;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(13, 71, 161, 0.4);
-}
-
-.btn-login:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(13, 71, 161, 0.3);
-}
-
-.btn-login:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.spinner-border-sm {
-  width: 1rem;
-  height: 1rem;
-  border-width: 0.15em;
-}
-
-/* ============================================================================
-   FOOTER
-   ============================================================================ */
-
-.login-footer {
-  text-align: center;
-  padding-top: 1.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.login-footer p {
-  margin: 0;
-  font-size: 0.85rem;
-  color: #999;
-}
-
-/* ============================================================================
-   RESPONSIVE - MOBILE FIRST
-   ============================================================================ */
-
-/* Tablets y pantallas medianas */
-@media (min-width: 768px) {
-  .login-card {
-    padding: 3rem 2.5rem;
-  }
-
-  .app-title {
-    font-size: 3rem;
-  }
-
-  .logo-icon {
-    width: 90px;
-    height: 90px;
-  }
-
-  .logo-icon i {
-    font-size: 3rem;
-  }
-}
-
-/* Pantallas grandes */
-@media (min-width: 1024px) {
-  .login-container {
-    max-width: 480px;
-  }
-}
-
-/* Animación del spinner */
-@keyframes spinner-border {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spinner-border {
-  display: inline-block;
-  width: 1rem;
-  height: 1rem;
-  vertical-align: text-bottom;
-  border: 0.15em solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: spinner-border 0.75s linear infinite;
+.bg-primary {
+  background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
 }
 </style>
-
