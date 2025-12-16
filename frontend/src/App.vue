@@ -1,27 +1,15 @@
+<template>
+  <v-app>
+    <v-main>
+      <router-view />
+    </v-main>
+  </v-app>
+</template>
+
 <script setup>
 import { RouterView } from 'vue-router'
 </script>
 
-<template>
-  <RouterView />
-</template>
-
-<style>
-/* Reset básico para toda la aplicación */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-#app {
-  width: 100%;
-  min-height: 100vh;
-}
+<style scoped>
+/* Estilos globales se agregarán aquí durante la refactorización */
 </style>

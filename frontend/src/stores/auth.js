@@ -176,9 +176,83 @@ export const useAuthStore = defineStore('auth', () => {
   
   /**
    * Login: Autentica al usuario y guarda el token
+   * 
+   * VERSIÓN SIMULADA PARA DESARROLLO (FASE 3 - Refactorización)
+   * 
+   * Usuarios de prueba:
+   * - admin / admin123 -> Rol: Administrador
+   * - tec / tec123 -> Rol: Técnico
+   * - jefe / jefe123 -> Rol: Jefe de Departamento
    */
   async function login(username, password) {
     try {
+      // ========================================================================
+      // LOGIN SIMULADO (Para desarrollo sin backend)
+      // ========================================================================
+      
+      // Simular delay de red
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // Validar credenciales simuladas
+      let mockUser = null
+      
+      if (username === 'admin' && password === 'admin123') {
+        mockUser = {
+          id: 1,
+          username: 'admin',
+          email: 'admin@hospital.com',
+          rol: {
+            id: 1,
+            nombre_rol: 'Administrador'
+          }
+        }
+      } else if (username === 'tec' && password === 'tec123') {
+        mockUser = {
+          id: 2,
+          username: 'tec',
+          email: 'tecnico@hospital.com',
+          rol: {
+            id: 2,
+            nombre_rol: 'Técnico'
+          }
+        }
+      } else if (username === 'jefe' && password === 'jefe123') {
+        mockUser = {
+          id: 3,
+          username: 'jefe',
+          email: 'jefe@hospital.com',
+          rol: {
+            id: 3,
+            nombre_rol: 'Jefe de Departamento'
+          }
+        }
+      } else {
+        return {
+          success: false,
+          message: 'Usuario o contraseña incorrectos'
+        }
+      }
+      
+      // Generar tokens simulados
+      const mockAccessToken = `mock_access_${mockUser.username}_${Date.now()}`
+      const mockRefreshToken = `mock_refresh_${mockUser.username}_${Date.now()}`
+      
+      // Guardar tokens
+      token.value = mockAccessToken
+      refreshToken.value = mockRefreshToken
+      localStorage.setItem('access_token', mockAccessToken)
+      localStorage.setItem('refresh_token', mockRefreshToken)
+      
+      // Guardar usuario
+      user.value = mockUser
+      localStorage.setItem('user', JSON.stringify(mockUser))
+      
+      return { success: true }
+      
+      // ========================================================================
+      // LOGIN REAL (Descomentar cuando el backend esté listo)
+      // ========================================================================
+      /*
       const response = await apiClient.post('/api/auth/token/', {
         username,
         password
@@ -196,6 +270,8 @@ export const useAuthStore = defineStore('auth', () => {
       await fetchUserInfo()
       
       return { success: true }
+      */
+      
     } catch (error) {
       console.error('Error en login:', error)
       return { 

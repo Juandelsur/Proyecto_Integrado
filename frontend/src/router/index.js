@@ -1,269 +1,265 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+// ============================================================================
+// IMPORTAR LAYOUT
+// ============================================================================
+
+import AppLayout from '@/layouts/AppLayout.vue'
+
+// ============================================================================
+// IMPORTAR VISTAS
+// ============================================================================
+
+// Vistas Públicas
+import LoginView from '@/views/LoginView.vue'
+
+// Vistas de Home (Inicio) por Rol
+import AdminHome from '@/views/AdminHome.vue'
+import TecnicoHome from '@/views/TecnicoHome.vue'
+import JefeHome from '@/views/JefeHome.vue'
+
+// Vistas Secundarias - Técnico
+import TecnicoHistorial from '@/views/tecnico/HistorialView.vue'
+import TecnicoOtros from '@/views/tecnico/OtrosView.vue'
+
+// Vistas Secundarias - Admin
+import AdminGestion from '@/views/admin/GestionView.vue'
+import AdminOtros from '@/views/admin/OtrosView.vue'
+
+// Vistas Secundarias - Jefe
+import JefeOtros from '@/views/jefe/OtrosView.vue'
+
+// ============================================================================
+// CONFIGURACIÓN DE RUTAS CON RBAC
+// ============================================================================
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     // ========================================================================
-    // RUTA RAÍZ - REDIRIGE AL LOGIN
+    // RUTA PÚBLICA - LOGIN
+    // ========================================================================
+    {
+      path: '/login',
+      name: 'Login',
+      component: LoginView,
+      meta: {
+        title: 'Iniciar Sesión',
+        requiresAuth: false,
+        public: true
+      }
+    },
+
+    // ========================================================================
+    // RUTAS PROTEGIDAS CON LAYOUT (RBAC)
+    // ========================================================================
+    
+    // ------------------------------------------------------------------
+    // ADMINISTRADOR - Rutas con AppLayout
+    // ------------------------------------------------------------------
+    {
+      path: '/admin',
+      component: AppLayout,
+      meta: {
+        requiresAuth: true,
+        requiredRole: 'Administrador'
+      },
+      children: [
+        {
+          path: '',
+          name: 'AdminHome',
+          component: AdminHome,
+          meta: {
+            title: 'Inicio - Administrador',
+          }
+        },
+        {
+          path: 'gestion',
+          name: 'AdminGestion',
+          component: AdminGestion,
+          meta: {
+            title: 'Gestión del Sistema',
+          }
+        },
+        {
+          path: 'otros',
+          name: 'AdminOtros',
+          component: AdminOtros,
+          meta: {
+            title: 'Otras Opciones',
+          }
+        }
+      ]
+    },
+
+    // ------------------------------------------------------------------
+    // TÉCNICO - Rutas con AppLayout
+    // ------------------------------------------------------------------
+    {
+      path: '/tecnico',
+      component: AppLayout,
+      meta: {
+        requiresAuth: true,
+        requiredRole: 'Técnico'
+      },
+      children: [
+        {
+          path: '',
+          name: 'TecnicoHome',
+          component: TecnicoHome,
+          meta: {
+            title: 'Inicio - Técnico',
+          }
+        },
+        {
+          path: 'historial',
+          name: 'TecnicoHistorial',
+          component: TecnicoHistorial,
+          meta: {
+            title: 'Historial de Movimientos',
+          }
+        },
+        {
+          path: 'otros',
+          name: 'TecnicoOtros',
+          component: TecnicoOtros,
+          meta: {
+            title: 'Otras Opciones',
+          }
+        }
+      ]
+    },
+
+    // ------------------------------------------------------------------
+    // JEFE DE DEPARTAMENTO - Rutas con AppLayout
+    // ------------------------------------------------------------------
+    {
+      path: '/jefe',
+      component: AppLayout,
+      meta: {
+        requiresAuth: true,
+        requiredRole: 'Jefe de Departamento'
+      },
+      children: [
+        {
+          path: '',
+          name: 'JefeHome',
+          component: JefeHome,
+          meta: {
+            title: 'Inicio - Jefe de Departamento',
+          }
+        },
+        {
+          path: 'otros',
+          name: 'JefeOtros',
+          component: JefeOtros,
+          meta: {
+            title: 'Otras Opciones',
+          }
+        }
+      ]
+    },
+
+    // ========================================================================
+    // RUTA POR DEFECTO - REDIRIGE AL LOGIN
     // ========================================================================
     {
       path: '/',
       redirect: '/login'
     },
+
     // ========================================================================
-    // RUTA DE LOGIN
-    // ========================================================================
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('../views/LoginView.vue'),
-      meta: {
-        title: 'Iniciar Sesión'
-      }
-    },
-    // ========================================================================
-    // RUTA DE HOME (DASHBOARD PRINCIPAL)
+    // RUTA 404 - NO ENCONTRADA
     // ========================================================================
     {
-      path: '/home',
-      name: 'home',
-      component: () => import('../views/HomeView.vue'),
-      meta: {
-        title: 'Dashboard',
-        requiresAuth: true
-      }
-    },
-    // ========================================================================
-    // RUTAS DE ACTIVOS (ADMIN)
-    // ========================================================================
-    {
-      path: '/inventario',
-      name: 'asset-list',
-      component: () => import('../views/admin/AssetListView.vue'),
-      meta: {
-        title: 'Inventario',
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/activos/:id',
-      name: 'asset-detail',
-      component: () => import('../views/admin/AssetDetailView.vue'),
-      meta: {
-        title: 'Detalle de Activo',
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/activos/:id/editar',
-      name: 'asset-edit',
-      component: () => import('../views/AssetEditView.vue'),
-      meta: {
-        title: 'Editar Activo',
-        requiresAuth: true,
-        requiresPermission: 'canEditAssets'
-      }
-    },
-    {
-      path: '/activos/nuevo',
-      name: 'asset-create',
-      component: () => import('../views/AssetCreateView.vue'),
-      meta: {
-        title: 'Crear Activo',
-        requiresAuth: true,
-        requiresPermission: 'canEditAssets'
-      }
-    },
-    {
-      path: '/activos/:id/movilizar',
-      name: 'asset-move',
-      component: () => import('../views/AssetMoveView.vue'),
-      meta: {
-        title: 'Movilizar Activo',
-        requiresAuth: true,
-        requiresPermission: 'canMoveAssets'
-      }
-    },
-    // ========================================================================
-    // RUTA DE IMPRESIÓN DE QRS
-    // ========================================================================
-    {
-      path: '/imprimir-etiquetas',
-      name: 'print-qrs',
-      component: () => import('../views/admin/PrintQRsView.vue'),
-      meta: {
-        title: 'Imprimir Etiquetas QR',
-        requiresAuth: true,
-        requiresPermission: 'canPrintLabels'
-      }
-    },
-    // ========================================================================
-    // RUTAS DEL TÉCNICO (CON LAYOUT)
-    // ========================================================================
-    {
-      path: '/tecnico',
-      component: () => import('../layouts/LayoutTecnico.vue'),
-      meta: {
-        requiresAuth: true,
-        requiresRole: 'Técnico'
-      },
-      children: [
-        {
-          path: 'home',
-          name: 'technician-home',
-          component: () => import('../views/technician/HomeView.vue'),
-          meta: {
-            title: 'Home - Técnico'
-          }
-        },
-        {
-          path: 'scan',
-          name: 'technician-scan',
-          component: () => import('../views/technician/ScannerView.vue'),
-          meta: {
-            title: 'Escanear QR'
-          }
-        },
-        {
-          path: 'history',
-          name: 'technician-history',
-          component: () => import('../views/technician/TecnicoHistorialView.vue'),
-          meta: {
-            title: 'Historial de Movimientos'
-          }
-        },
-        {
-          path: 'imprimir',
-          name: 'technician-print',
-          component: () => import('../views/technician/PrintLabelsView.vue'),
-          meta: {
-            title: 'Imprimir Etiquetas'
-          }
-        },
-        {
-          path: 'crear',
-          name: 'technician-create',
-          component: () => import('../views/technician/CreateAssetView.vue'),
-          meta: {
-            title: 'Crear Activo'
-          }
-        },
-        {
-          path: 'editar-buscar',
-          name: 'technician-edit-search',
-          component: () => import('../views/technician/EditAssetSearchView.vue'),
-          meta: {
-            title: 'Editar Activos'
-          }
-        }
-      ]
-    },
-    // ========================================================================
-    // RUTAS DEL TÉCNICO (SIN LAYOUT - COMPATIBILIDAD)
-    // ========================================================================
-    {
-      path: '/escanear',
-      name: 'scan-qr',
-      component: () => import('../views/technician/ScannerView.vue'),
-      meta: {
-        title: 'Escanear QR',
-        requiresAuth: true
-      }
-    },
-    // ========================================================================
-    // RUTA DE PRUEBA - QR SCANNER DEMO (SIN AUTENTICACIÓN PARA TESTING)
-    // ========================================================================
-    {
-      path: '/qr-scanner-demo',
-      name: 'qr-scanner-demo',
-      component: () => import('../views/technician/QRScannerDemoView.vue'),
-      meta: {
-        title: 'QR Scanner Demo',
-        requiresAuth: false // Sin auth para pruebas
-      }
-    },
-    {
-      path: '/confirmar-equipo/:id',
-      name: 'confirm-asset',
-      component: () => import('../views/technician/ConfirmAssetView.vue'),
-      meta: {
-        title: 'Confirmar Equipo',
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/registro-exitoso',
-      name: 'movement-success',
-      component: () => import('../views/technician/MovementSuccessView.vue'),
-      meta: {
-        title: 'Registro Exitoso',
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/historico',
-      name: 'history',
-      component: () => import('../views/technician/HistoryView.vue'),
-      meta: {
-        title: 'Histórico',
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/configuracion',
-      name: 'settings',
-      component: () => import('../views/technician/SettingsView.vue'),
-      meta: {
-        title: 'Configuración',
-        requiresAuth: true
-      }
+      path: '/:pathMatch(.*)*',
+      redirect: '/login'
     }
-  ],
+  ]
 })
 
 // ============================================================================
-// NAVIGATION GUARDS (Protección de Rutas)
+// NAVIGATION GUARDS - PROTECCIÓN DE RUTAS CON RBAC
 // ============================================================================
 
 router.beforeEach((to, from, next) => {
-  // Obtener el store de autenticación
-  const authStore = useAuthStore()
-
   // Actualizar el título de la página
   document.title = to.meta.title ? `${to.meta.title} - SCA Hospital` : 'SCA Hospital'
 
-  // Verificar si la ruta requiere autenticación
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Redirigir al login si no está autenticado
-    next({ name: 'login', query: { redirect: to.fullPath } })
-    return
-  }
+  // Obtener el store de autenticación
+  const authStore = useAuthStore()
 
-  // Verificar permisos específicos
-  if (to.meta.requiresPermission) {
-    const permission = to.meta.requiresPermission
-    if (!authStore[permission]) {
-      // Redirigir a home si no tiene el permiso
-      alert('❌ No tienes permisos para acceder a esta página.')
-      next('/home')
-      return
+  // =========================================================================
+  // 1. VERIFICAR SI LA RUTA REQUIERE AUTENTICACIÓN
+  // =========================================================================
+  
+  const requiresAuth = to.meta.requiresAuth
+
+  if (requiresAuth) {
+    // Si requiere autenticación, verificar si el usuario está autenticado
+    if (!authStore.isAuthenticated) {
+      // No está autenticado -> Redirigir al login
+      console.warn('⛔ Acceso denegado: Usuario no autenticado')
+      return next({
+        path: '/login',
+        query: { redirect: to.fullPath } // Guardar ruta destino para redirigir después del login
+      })
+    }
+
+    // ========================================================================
+    // 2. VERIFICAR ROLES (RBAC - Role-Based Access Control)
+    // ========================================================================
+    
+    const requiredRole = to.meta.requiredRole
+
+    if (requiredRole) {
+      const userRole = authStore.userRole
+
+      // Verificar si el usuario tiene el rol requerido
+      if (userRole !== requiredRole) {
+        // No tiene el rol correcto -> Denegar acceso
+        console.warn(`⛔ Acceso denegado: Se requiere rol "${requiredRole}", pero el usuario tiene rol "${userRole}"`)
+        
+        // Redirigir al panel correcto según su rol
+        if (userRole === 'Administrador') {
+          return next('/admin')
+        } else if (userRole === 'Técnico') {
+          return next('/tecnico')
+        } else if (userRole === 'Jefe de Departamento') {
+          return next('/jefe')
+        } else {
+          return next('/login')
+        }
+      }
     }
   }
 
-  // Verificar rol específico
-  if (to.meta.requiresRole) {
-    const requiredRole = to.meta.requiresRole
-    if (authStore.userRole !== requiredRole) {
-      // Redirigir según el rol del usuario
-      alert('❌ Esta página es solo para técnicos.')
-      next('/home')
-      return
+  // =========================================================================
+  // 3. SI ESTÁ AUTENTICADO Y TRATA DE IR AL LOGIN, REDIRIGIR A SU PANEL
+  // =========================================================================
+  
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    const userRole = authStore.userRole
+    
+    if (userRole === 'Administrador') {
+      return next('/admin')
+    } else if (userRole === 'Técnico') {
+      return next('/tecnico')
+    } else if (userRole === 'Jefe de Departamento') {
+      return next('/jefe')
     }
   }
 
-  // Continuar con la navegación
+  // =========================================================================
+  // 4. TODO OK - PERMITIR NAVEGACIÓN
+  // =========================================================================
+  
   next()
 })
+
+// ============================================================================
+// EXPORTAR ROUTER
+// ============================================================================
 
 export default router
