@@ -11,103 +11,139 @@
     </v-card>
 
     <!-- ====================================================================
-         2. ACCESOS RÁPIDOS DE GESTIÓN (Grid)
+         2. ACCESOS RÁPIDOS DE GESTIÓN (Grid de 3 columnas)
          ==================================================================== -->
     <v-row class="mb-4">
-      <!-- Botón 1: Crear Activo -->
-      <v-col cols="6">
+      <!-- Escanear QR -->
+      <v-col cols="12" sm="4">
         <v-card
           class="action-card"
           hover
           ripple
-          @click="navigateTo('/tecnico/crear')"
+          @click="navigateTo('/tecnico/scan')"
         >
-          <v-card-text class="text-center pa-4">
-            <v-icon size="64" color="primary" class="mb-2">mdi-plus-box</v-icon>
-            <p class="text-subtitle-1 font-weight-medium mb-0">Crear Activo</p>
+          <v-card-text class="text-center pa-6">
+            <v-avatar size="80" color="success" class="mb-3">
+              <v-icon size="48">mdi-qrcode-scan</v-icon>
+            </v-avatar>
+            <p class="text-h6 font-weight-bold mb-1">Escanear QR</p>
+            <p class="text-caption text-grey">Registrar movimientos</p>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <!-- Botón 2: Editar Activos -->
-      <v-col cols="6">
+      <!-- Crear Activo -->
+      <v-col cols="12" sm="4">
         <v-card
           class="action-card"
           hover
           ripple
-          @click="navigateTo('/tecnico/editar-buscar')"
+          @click="navigateTo('/tecnico/activos/crear')"
         >
-          <v-card-text class="text-center pa-4">
-            <v-icon size="64" color="info" class="mb-2">mdi-pencil-box-multiple</v-icon>
-            <p class="text-subtitle-1 font-weight-medium mb-0">Editar Activos</p>
+          <v-card-text class="text-center pa-6">
+            <v-avatar size="80" color="primary" class="mb-3">
+              <v-icon size="48">mdi-plus-circle</v-icon>
+            </v-avatar>
+            <p class="text-h6 font-weight-bold mb-1">Crear Activo</p>
+            <p class="text-caption text-grey">Registrar nuevo equipo</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Editar Activo -->
+      <v-col cols="12" sm="4">
+        <v-card
+          class="action-card"
+          hover
+          ripple
+          @click="navigateTo('/tecnico/activos/editar')"
+        >
+          <v-card-text class="text-center pa-6">
+            <v-avatar size="80" color="warning" class="mb-3">
+              <v-icon size="48">mdi-pencil</v-icon>
+            </v-avatar>
+            <p class="text-h6 font-weight-bold mb-1">Editar Activo</p>
+            <p class="text-caption text-grey">Modificar información</p>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
     <!-- ====================================================================
-         3. FEED DE ACTIVIDAD DEL EQUIPO (Listado)
+         3. FEED DE ACTIVIDAD DEL EQUIPO (COLAPSABLE)
          ==================================================================== -->
     <v-card>
-      <v-card-title class="text-h6 font-weight-bold">
-        Últimos Movimientos del Equipo
+      <v-card-title class="d-flex justify-space-between align-center flex-wrap">
+        <span class="text-h6 font-weight-bold">Últimos Movimientos del Equipo</span>
+        <div class="d-flex align-center gap-2">
+          <v-btn
+            variant="tonal"
+            color="primary"
+            size="small"
+            prepend-icon="mdi-history"
+            @click="navigateTo('/tecnico/historial')"
+          >
+            Ver Historial
+          </v-btn>
+          <v-btn
+            :icon="movimientosExpandido ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+            variant="text"
+            size="small"
+            @click="movimientosExpandido = !movimientosExpandido"
+          ></v-btn>
+        </div>
       </v-card-title>
 
-      <!-- Loading State -->
-      <v-card-text v-if="loading" class="text-center py-8">
-        <v-progress-circular indeterminate color="primary"></v-progress-circular>
-        <p class="text-body-2 mt-4">Cargando movimientos...</p>
+      <!-- Contenido colapsable -->
+      <v-expand-transition>
+        <v-card-text v-show="movimientosExpandido">
+          <!-- Estado de carga -->
+          <div v-if="loading" class="text-center py-8">
+            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            <p class="mt-4 text-body-2">Cargando movimientos...</p>
+          </div>
+
+          <!-- Error -->
+          <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">
+            {{ error }}
+          </v-alert>
+
+          <!-- Lista de movimientos -->
+          <v-list v-else-if="ultimosMovimientos.length > 0" lines="three">
+            <v-list-item
+              v-for="(movimiento, index) in ultimosMovimientos"
+              :key="index"
+              class="mb-2"
+            >
+              <template v-slot:prepend>
+                <v-avatar :color="getColorByTipo(movimiento.tipo_movimiento)">
+                  <v-icon>{{ getIconByTipo(movimiento.tipo_movimiento) }}</v-icon>
+                </v-avatar>
+              </template>
+
+              <v-list-item-title class="font-weight-medium">
+                {{ getActivoNombre(movimiento) }}
+              </v-list-item-title>
+              <v-list-item-subtitle>
+                {{ getDescripcionMovimiento(movimiento) }}
+              </v-list-item-subtitle>
+            </v-list-item>
+          </v-list>
+
+          <!-- Sin datos -->
+          <div v-else class="text-center py-8">
+            <v-icon size="64" color="grey-lighten-1">mdi-inbox</v-icon>
+            <p class="text-body-1 mt-2">No hay movimientos registrados</p>
+          </div>
+        </v-card-text>
+      </v-expand-transition>
+
+      <!-- Mini indicador cuando está colapsado -->
+      <v-card-text v-if="!movimientosExpandido" class="py-2 text-center">
+        <v-chip size="small" color="primary" variant="tonal">
+          {{ ultimosMovimientos.length }} movimiento{{ ultimosMovimientos.length !== 1 ? 's' : '' }} registrado{{ ultimosMovimientos.length !== 1 ? 's' : '' }}
+        </v-chip>
       </v-card-text>
-
-      <!-- Error State -->
-      <v-card-text v-else-if="error" class="text-center py-8">
-        <v-icon size="48" color="error" class="mb-2">mdi-alert-circle</v-icon>
-        <p class="text-body-1 text-error">{{ error }}</p>
-        <v-btn color="primary" variant="text" @click="fetchMovimientos">
-          Reintentar
-        </v-btn>
-      </v-card-text>
-
-      <!-- Empty State -->
-      <v-card-text v-else-if="ultimosMovimientos.length === 0" class="text-center py-8">
-        <v-icon size="48" color="grey" class="mb-2">mdi-inbox</v-icon>
-        <p class="text-body-1 text-grey">No hay movimientos registrados</p>
-      </v-card-text>
-
-      <!-- Lista de Movimientos -->
-      <v-list v-else lines="two">
-        <v-list-item
-          v-for="movimiento in ultimosMovimientos"
-          :key="movimiento.id"
-        >
-          <!-- Avatar con color semántico según tipo de acción -->
-          <template v-slot:prepend>
-            <v-avatar :color="getColorByTipo(movimiento.tipo_movimiento)">
-              <v-icon color="white">{{ getIconByTipo(movimiento.tipo_movimiento) }}</v-icon>
-            </v-avatar>
-          </template>
-
-          <!-- Contenido del ítem -->
-          <v-list-item-title class="font-weight-medium">
-            {{ getActivoNombre(movimiento) }}
-          </v-list-item-title>
-          <v-list-item-subtitle>
-            {{ getDescripcionMovimiento(movimiento) }}
-          </v-list-item-subtitle>
-        </v-list-item>
-      </v-list>
-
-      <!-- Footer: Botón Ver Historial Completo -->
-      <v-card-actions v-if="ultimosMovimientos.length > 0">
-        <v-btn
-          variant="text"
-          color="primary"
-          block
-          @click="navigateTo('/tecnico/history')"
-        >
-          Ver Historial Completo
-        </v-btn>
-      </v-card-actions>
     </v-card>
   </div>
 </template>
@@ -120,8 +156,9 @@
  *
  * Vista principal del técnico con:
  * 1. Tarjeta de bienvenida con fecha actual
- * 2. Accesos rápidos a Crear y Editar activos
+ * 2. Tres accesos rápidos: Escanear QR, Crear Activo, Editar Activo
  * 3. Feed de actividad con los últimos 15 movimientos del equipo
+ * 4. Botón para ver el historial completo
  *
  * RESTRICCIÓN: NO incluye barras de navegación (gestionadas por LayoutTecnico.vue)
  */
@@ -141,7 +178,7 @@ const authStore = useAuthStore()
 // ============================================================================
 // STATE
 // ============================================================================
-
+const movimientosExpandido = ref(true) // Por defecto expandido
 const ultimosMovimientos = ref([])
 const loading = ref(false)
 const error = ref(null)
@@ -339,6 +376,7 @@ onMounted(() => {
 
 .technician-home-content {
   min-height: calc(100vh - 112px); /* Altura total - app bar - bottom nav */
+  max-width: 9000px;
   background: #f5f7fa;
   padding: 1rem;
   padding-bottom: 80px; /* Espacio para el FAB flotante */
@@ -352,15 +390,25 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
+  border: 2px solid transparent;
 }
 
 .action-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+  border-color: rgba(25, 118, 210, 0.3);
 }
 
 .action-card:active {
   transform: translateY(-2px);
+}
+
+/* ============================================================================
+   UTILIDADES
+   ============================================================================ */
+
+.gap-2 {
+  gap: 0.5rem;
 }
 
 /* ============================================================================
@@ -371,13 +419,25 @@ onMounted(() => {
   .technician-home-content {
     padding: 0.75rem;
   }
+
+  .action-card .text-h6 {
+    font-size: 1rem !important;
+  }
+
+  .action-card v-avatar {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .action-card .v-icon {
+    font-size: 36px !important;
+  }
 }
 
 @media (min-width: 960px) {
   .technician-home-content {
-    max-width: 800px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 }
 </style>
-

@@ -86,6 +86,28 @@
               </v-col>
             </v-row>
 
+            <!-- Resumen y Selección -->
+            <v-card variant="tonal" color="primary" class="mb-4" v-if="activosFiltrados.length > 0">
+              <v-card-text>
+                <v-row align="center">
+                  <v-col cols="12" md="8">
+                    <div class="d-flex align-center gap-3">
+                      <v-chip color="primary" variant="elevated">
+                        {{ activosSeleccionados.length }} de {{ activosFiltrados.length }} seleccionados
+                      </v-chip>
+                      
+                      <v-checkbox
+                        v-model="seleccionarTodosActivos"
+                        label="Seleccionar todos"
+                        hide-details
+                        @update:model-value="toggleSeleccionarTodosActivos"
+                      ></v-checkbox>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+
             <!-- Tabla de Activos -->
             <v-data-table
               v-model="activosSeleccionados"
@@ -117,6 +139,16 @@
                   {{ item.ubicacion_actual?.nombre_ubicacion || 'Sin ubicación' }}
                 </v-chip>
               </template>
+
+              <template v-slot:item.estado="{ item }">
+                <v-chip 
+                  size="small" 
+                  :color="getEstadoColor(item.estado?.nombre_estado)"
+                  variant="tonal"
+                >
+                  {{ item.estado?.nombre_estado || 'Sin estado' }}
+                </v-chip>
+              </template>
             </v-data-table>
 
             <v-card-actions class="mt-4">
@@ -137,8 +169,9 @@
         <!-- TAB 2: POR UBICACIONES -->
         <v-window-item value="ubicaciones">
           <v-card-text>
+            <!-- Filtros de Ubicación -->
             <v-row class="mb-4">
-              <v-col cols="12" md="6">
+              <v-col cols="12" md="4">
                 <v-select
                   v-model="filtros.departamento"
                   :items="departamentos"
@@ -148,66 +181,154 @@
                   variant="outlined"
                   density="comfortable"
                   clearable
+                  prepend-inner-icon="mdi-office-building"
+                  @update:model-value="onDepartamentoChange"
                 ></v-select>
               </v-col>
 
-              <v-col cols="12" md="6">
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="filtros.ubicacion"
+                  :items="ubicacionesFiltradas"
+                  item-title="nombre_ubicacion"
+                  item-value="id"
+                  label="Ubicación"
+                  variant="outlined"
+                  density="comfortable"
+                  clearable
+                  prepend-inner-icon="mdi-map-marker"
+                  :disabled="!filtros.departamento"
+                  @update:model-value="cargarActivosPorUbicacion"
+                >
+                  <template v-slot:prepend-item>
+                    <v-list-item
+                      title="Todas las ubicaciones"
+                      @click="seleccionarTodasLasUbicaciones"
+                    >
+                      <template v-slot:prepend>
+                        <v-icon>mdi-select-all</v-icon>
+                      </template>
+                    </v-list-item>
+                    <v-divider class="mb-2"></v-divider>
+                  </template>
+                </v-select>
+              </v-col>
+
+              <v-col cols="12" md="4">
                 <v-text-field
-                  v-model="filtros.busquedaUbicacion"
-                  label="Buscar ubicación"
+                  v-model="filtros.busquedaActivo"
+                  label="Buscar activo en ubicación"
                   prepend-inner-icon="mdi-magnify"
                   variant="outlined"
                   density="comfortable"
                   clearable
+                  :disabled="!filtros.ubicacion && activosPorUbicacion.length === 0"
                 ></v-text-field>
               </v-col>
             </v-row>
 
-            <!-- Tabla de Ubicaciones -->
-            <v-data-table
-              v-model="ubicacionesSeleccionadas"
-              :headers="headersUbicaciones"
-              :items="ubicacionesFiltradas"
-              :loading="loadingUbicaciones"
-              show-select
-              item-value="id"
-              class="elevation-1"
-              :items-per-page="10"
+            <!-- Resumen y Selección de Activos por Ubicación -->
+            <v-card variant="tonal" color="success" class="mb-4" v-if="activosPorUbicacionFiltrados.length > 0">
+              <v-card-text>
+                <v-row align="center">
+                  <v-col cols="12" md="8">
+                    <div class="d-flex align-center gap-3">
+                      <v-chip color="success" variant="elevated">
+                        {{ activosPorUbicacionSeleccionados.length }} de {{ activosPorUbicacionFiltrados.length }} seleccionados
+                      </v-chip>
+                      
+                      <v-checkbox
+                        v-model="seleccionarTodosUbicacion"
+                        label="Seleccionar todos"
+                        hide-details
+                        @update:model-value="toggleSeleccionarTodosUbicacion"
+                      ></v-checkbox>
+                    </div>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
+
+            <!-- Mensaje cuando no hay ubicación seleccionada -->
+            <v-alert
+              v-if="!filtros.ubicacion && activosPorUbicacion.length === 0"
+              type="info"
+              variant="tonal"
+              class="mb-4"
             >
-              <template v-slot:loading>
-                <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
-              </template>
+              <v-icon start>mdi-information</v-icon>
+              Selecciona un departamento y una ubicación para ver los activos disponibles.
+            </v-alert>
 
-              <template v-slot:no-data>
-                <div class="text-center py-8">
-                  <v-icon size="64" color="grey">mdi-map-marker-off</v-icon>
-                  <p class="text-h6 mt-4">No hay ubicaciones disponibles</p>
-                </div>
-              </template>
+            <!-- Loading State -->
+            <div v-if="loadingActivosUbicacion" class="loading-container">
+              <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+              <p class="mt-3 text-h6">Cargando activos...</p>
+            </div>
 
-              <template v-slot:item.departamento="{ item }">
-                <v-chip size="small" color="primary" variant="tonal">
-                  {{ item.departamento?.nombre_departamento || 'Sin departamento' }}
-                </v-chip>
-              </template>
+            <!-- Lista de Activos por Ubicación -->
+            <v-card v-else-if="activosPorUbicacionFiltrados.length > 0">
+              <v-card-title class="text-h6 font-weight-bold d-flex justify-space-between">
+                <span>Activos en Ubicación</span>
+                <span class="text-subtitle-2 text-grey">{{ activosPorUbicacionFiltrados.length }} activos</span>
+              </v-card-title>
 
-              <template v-slot:item.total_activos="{ item }">
-                <v-chip size="small" color="success" variant="outlined">
-                  {{ item.total_activos || 0 }} activos
-                </v-chip>
-              </template>
-            </v-data-table>
+              <v-divider></v-divider>
 
-            <v-card-actions class="mt-4">
+              <v-list>
+                <v-list-item
+                  v-for="activo in activosPorUbicacionFiltrados"
+                  :key="activo.id"
+                  :value="activo.id"
+                >
+                  <template v-slot:prepend>
+                    <v-checkbox
+                      :model-value="isActivoUbicacionSeleccionado(activo.id)"
+                      @update:model-value="toggleActivoUbicacion(activo)"
+                      hide-details
+                    ></v-checkbox>
+                  </template>
+
+                  <v-list-item-title class="font-weight-medium">
+                    {{ activo.marca }} {{ activo.modelo }}
+                  </v-list-item-title>
+
+                  <v-list-item-subtitle>
+                    <div class="d-flex align-center gap-2 flex-wrap mt-1">
+                      <v-chip size="small" variant="tonal">
+                        {{ activo.codigo_inventario }}
+                      </v-chip>
+                      <v-chip 
+                        size="small" 
+                        :color="getEstadoColor(activo.estado?.nombre_estado)"
+                        variant="tonal"
+                      >
+                        {{ activo.estado?.nombre_estado || 'Sin estado' }}
+                      </v-chip>
+                    </div>
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-card>
+
+            <!-- Empty State -->
+            <v-card v-else-if="filtros.ubicacion">
+              <v-card-text class="text-center py-8">
+                <v-icon size="64" color="grey-lighten-1">mdi-inbox</v-icon>
+                <p class="text-h6 mt-4">No hay activos en esta ubicación</p>
+                <p class="text-body-2 text-grey">Intenta seleccionar otra ubicación</p>
+              </v-card-text>
+            </v-card>
+
+            <v-card-actions class="mt-4" v-if="activosPorUbicacionSeleccionados.length > 0">
               <v-spacer></v-spacer>
               <v-btn
-                color="primary"
+                color="success"
                 size="large"
-                :disabled="ubicacionesSeleccionadas.length === 0"
-                @click="agregarActivosPorUbicacion"
+                @click="agregarActivosUbicacionACola"
               >
                 <v-icon start>mdi-plus-circle</v-icon>
-                Agregar Activos de {{ ubicacionesSeleccionadas.length }} Ubicaciones
+                Agregar {{ activosPorUbicacionSeleccionados.length }} Activos a Cola
               </v-btn>
             </v-card-actions>
           </v-card-text>
@@ -344,10 +465,14 @@
                   <!-- QR Code -->
                   <div class="qr-container">
                     <img
+                      v-if="activo.qrDataUrl"
                       :src="activo.qrDataUrl"
                       alt="QR Code"
                       class="qr-image"
                     />
+                    <div v-else class="qr-placeholder">
+                      <v-icon size="40">mdi-qrcode</v-icon>
+                    </div>
                   </div>
 
                   <!-- Código Vertical -->
@@ -361,6 +486,15 @@
         </v-card-text>
       </v-card>
     </v-dialog>
+
+    <!-- SNACKBAR -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -370,12 +504,12 @@
  * PRINT LABELS VIEW - IMPRESIÓN DE ETIQUETAS QR
  * ============================================================================
  *
- * Vista crítica de gestión para imprimir etiquetas de activos con QR codes.
+ * Vista mejorada con búsqueda por ubicación desde el backend.
  * Tres modos de selección: Por Activos, Por Ubicaciones, Manual.
  * Genera etiquetas con diseño industrial (3 por fila) listas para impresión.
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import apiClient from '@/services/api'
 import QRCode from 'qrcode'
@@ -390,7 +524,7 @@ const router = useRouter()
 // STATE - TABS Y FILTROS
 // ============================================================================
 
-const activeTab = ref('activos')
+const activeTab = ref('ubicaciones')
 
 const filtros = ref({
   busqueda: '',
@@ -398,7 +532,8 @@ const filtros = ref({
   tipoEquipo: null,
   ubicacion: null,
   departamento: null,
-  busquedaUbicacion: ''
+  busquedaUbicacion: '',
+  busquedaActivo: ''
 })
 
 // ============================================================================
@@ -409,24 +544,39 @@ const activos = ref([])
 const ubicaciones = ref([])
 const departamentos = ref([])
 const tiposEquipo = ref([])
+const activosPorUbicacion = ref([])
 
 const loadingActivos = ref(false)
 const loadingUbicaciones = ref(false)
+const loadingActivosUbicacion = ref(false)
 
 // ============================================================================
 // STATE - SELECCIÓN Y COLA
 // ============================================================================
 
 const activosSeleccionados = ref([])
-const ubicacionesSeleccionadas = ref([])
+const activosPorUbicacionSeleccionados = ref([])
 const codigosManuales = ref([])
 const colaImpresion = ref([])
+
+const seleccionarTodosActivos = ref(false)
+const seleccionarTodosUbicacion = ref(false)
 
 // ============================================================================
 // STATE - VISTA PREVIA
 // ============================================================================
 
 const dialogVistaPrevia = ref(false)
+
+// ============================================================================
+// STATE - NOTIFICACIONES
+// ============================================================================
+
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success'
+})
 
 // ============================================================================
 // COMPUTED - HEADERS DE TABLAS
@@ -436,13 +586,8 @@ const headersActivos = computed(() => [
   { title: 'Nombre', key: 'nombre', sortable: true },
   { title: 'Código', key: 'codigo_inventario', sortable: true },
   { title: 'Marca', key: 'marca', sortable: true },
-  { title: 'Ubicación', key: 'ubicacion', sortable: false }
-])
-
-const headersUbicaciones = computed(() => [
-  { title: 'Ubicación', key: 'nombre_ubicacion', sortable: true },
-  { title: 'Departamento', key: 'departamento', sortable: false },
-  { title: 'Total Activos', key: 'total_activos', sortable: true }
+  { title: 'Ubicación', key: 'ubicacion', sortable: false },
+  { title: 'Estado', key: 'estado', sortable: false }
 ])
 
 // ============================================================================
@@ -452,14 +597,30 @@ const headersUbicaciones = computed(() => [
 const activosFiltrados = computed(() => {
   let resultado = activos.value
 
+  // Filtro por búsqueda de texto
+  if (filtros.value.busqueda) {
+    const termino = filtros.value.busqueda.toLowerCase()
+    resultado = resultado.filter(activo => {
+      return (
+        activo.codigo_inventario?.toLowerCase().includes(termino) ||
+        activo.marca?.toLowerCase().includes(termino) ||
+        activo.modelo?.toLowerCase().includes(termino) ||
+        activo.numero_serie?.toLowerCase().includes(termino)
+      )
+    })
+  }
+
+  // Filtro por marca
   if (filtros.value.marca) {
     resultado = resultado.filter(a => a.marca === filtros.value.marca)
   }
 
+  // Filtro por tipo de equipo
   if (filtros.value.tipoEquipo) {
     resultado = resultado.filter(a => a.tipo?.id === filtros.value.tipoEquipo)
   }
 
+  // Filtro por ubicación
   if (filtros.value.ubicacion) {
     resultado = resultado.filter(a => a.ubicacion_actual?.id === filtros.value.ubicacion)
   }
@@ -468,24 +629,34 @@ const activosFiltrados = computed(() => {
 })
 
 const ubicacionesFiltradas = computed(() => {
-  let resultado = ubicaciones.value
+  if (!filtros.value.departamento) return []
+  
+  return ubicaciones.value.filter(
+    ub => ub.departamento?.id === filtros.value.departamento
+  )
+})
 
-  if (filtros.value.departamento) {
-    resultado = resultado.filter(u => u.departamento?.id === filtros.value.departamento)
-  }
+const activosPorUbicacionFiltrados = computed(() => {
+  let resultado = activosPorUbicacion.value
 
-  if (filtros.value.busquedaUbicacion) {
-    const busqueda = filtros.value.busquedaUbicacion.toLowerCase()
-    resultado = resultado.filter(u =>
-      u.nombre_ubicacion.toLowerCase().includes(busqueda)
-    )
+  // Filtrar por búsqueda de texto
+  if (filtros.value.busquedaActivo) {
+    const termino = filtros.value.busquedaActivo.toLowerCase()
+    resultado = resultado.filter(activo => {
+      return (
+        activo.codigo_inventario?.toLowerCase().includes(termino) ||
+        activo.marca?.toLowerCase().includes(termino) ||
+        activo.modelo?.toLowerCase().includes(termino) ||
+        activo.numero_serie?.toLowerCase().includes(termino)
+      )
+    })
   }
 
   return resultado
 })
 
 const marcasDisponibles = computed(() => {
-  const marcas = [...new Set(activos.value.map(a => a.marca))]
+  const marcas = [...new Set(activos.value.map(a => a.marca).filter(Boolean))]
   return marcas.sort()
 })
 
@@ -496,10 +667,17 @@ const marcasDisponibles = computed(() => {
 async function fetchActivos() {
   loadingActivos.value = true
   try {
-    const response = await apiClient.get('/api/activos/')
-    activos.value = response.data.results || response.data
+    const response = await apiClient.get('/api/activos/', {
+      params: { page_size: 1000 }
+    })
+    activos.value = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.results || []
+    
+    console.log(`✅ Cargados ${activos.value.length} activos`)
   } catch (error) {
     console.error('Error al cargar activos:', error)
+    mostrarNotificacion('Error al cargar activos', 'error')
   } finally {
     loadingActivos.value = false
   }
@@ -508,10 +686,17 @@ async function fetchActivos() {
 async function fetchUbicaciones() {
   loadingUbicaciones.value = true
   try {
-    const response = await apiClient.get('/api/ubicaciones/')
-    ubicaciones.value = response.data.results || response.data
+    const response = await apiClient.get('/api/ubicaciones/', {
+      params: { page_size: 1000 }
+    })
+    ubicaciones.value = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.results || []
+    
+    console.log(`✅ Cargadas ${ubicaciones.value.length} ubicaciones`)
   } catch (error) {
     console.error('Error al cargar ubicaciones:', error)
+    mostrarNotificacion('Error al cargar ubicaciones', 'error')
   } finally {
     loadingUbicaciones.value = false
   }
@@ -519,20 +704,149 @@ async function fetchUbicaciones() {
 
 async function fetchDepartamentos() {
   try {
-    const response = await apiClient.get('/api/departamentos/')
-    departamentos.value = response.data.results || response.data
+    const response = await apiClient.get('/api/departamentos/', {
+      params: { page_size: 1000 }
+    })
+    departamentos.value = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.results || []
+    
+    console.log(`✅ Cargados ${departamentos.value.length} departamentos`)
   } catch (error) {
     console.error('Error al cargar departamentos:', error)
+    mostrarNotificacion('Error al cargar departamentos', 'error')
   }
 }
 
 async function fetchTiposEquipo() {
   try {
-    const response = await apiClient.get('/api/tipos-equipo/')
-    tiposEquipo.value = response.data.results || response.data
+    const response = await apiClient.get('/api/tipos-equipo/', {
+      params: { page_size: 1000 }
+    })
+    tiposEquipo.value = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.results || []
+    
+    console.log(`✅ Cargados ${tiposEquipo.value.length} tipos de equipo`)
   } catch (error) {
     console.error('Error al cargar tipos de equipo:', error)
+    mostrarNotificacion('Error al cargar tipos de equipo', 'error')
   }
+}
+
+/**
+ * Carga los activos filtrados por ubicación
+ */
+async function cargarActivosPorUbicacion() {
+  if (!filtros.value.ubicacion) {
+    activosPorUbicacion.value = []
+    activosPorUbicacionSeleccionados.value = []
+    return
+  }
+
+  loadingActivosUbicacion.value = true
+  try {
+    const response = await apiClient.get('/api/activos/', {
+      params: {
+        ubicacion_actual: filtros.value.ubicacion,
+        page_size: 1000
+      }
+    })
+    
+    activosPorUbicacion.value = Array.isArray(response.data) 
+      ? response.data 
+      : response.data.results || []
+
+    console.log(`✅ Cargados ${activosPorUbicacion.value.length} activos de la ubicación ${filtros.value.ubicacion}`)
+
+    // Limpiar selección al cambiar ubicación
+    activosPorUbicacionSeleccionados.value = []
+    seleccionarTodosUbicacion.value = false
+
+    // Si hay paginación, obtener todas las páginas
+    if (response.data.next) {
+      await cargarTodasLasPaginasUbicacion(response.data.next)
+    }
+
+  } catch (error) {
+    console.error('Error al cargar activos por ubicación:', error)
+    mostrarNotificacion('Error al cargar activos de la ubicación', 'error')
+    activosPorUbicacion.value = []
+  } finally {
+    loadingActivosUbicacion.value = false
+  }
+}
+
+/**
+ * Carga todas las páginas si la API está paginada (para ubicación)
+ */
+async function cargarTodasLasPaginasUbicacion(nextUrl) {
+  try {
+    while (nextUrl) {
+      const response = await apiClient.get(nextUrl)
+      const nuevosActivos = Array.isArray(response.data) 
+        ? response.data 
+        : response.data.results || []
+      activosPorUbicacion.value = [...activosPorUbicacion.value, ...nuevosActivos]
+      nextUrl = response.data.next || null
+    }
+  } catch (error) {
+    console.error('Error al cargar páginas adicionales:', error)
+  }
+}
+
+/**
+ * Selecciona todas las ubicaciones del departamento
+ */
+async function seleccionarTodasLasUbicaciones() {
+  filtros.value.ubicacion = null
+  
+  if (!filtros.value.departamento) return
+
+  loadingActivosUbicacion.value = true
+  try {
+    const ubicacionesIds = ubicacionesFiltradas.value.map(ub => ub.id)
+    
+    const promises = ubicacionesIds.map(ubicacionId => 
+      apiClient.get('/api/activos/', {
+        params: {
+          ubicacion_actual: ubicacionId,
+          page_size: 1000
+        }
+      })
+    )
+
+    const responses = await Promise.all(promises)
+    
+    activosPorUbicacion.value = []
+    responses.forEach(response => {
+      const activosUbicacion = Array.isArray(response.data) 
+        ? response.data 
+        : response.data.results || []
+      activosPorUbicacion.value = [...activosPorUbicacion.value, ...activosUbicacion]
+    })
+
+    console.log(`✅ Cargados ${activosPorUbicacion.value.length} activos de todas las ubicaciones del departamento`)
+    
+    activosPorUbicacionSeleccionados.value = []
+    seleccionarTodosUbicacion.value = false
+
+  } catch (error) {
+    console.error('Error al cargar activos de todas las ubicaciones:', error)
+    mostrarNotificacion('Error al cargar activos', 'error')
+  } finally {
+    loadingActivosUbicacion.value = false
+  }
+}
+
+/**
+ * Al cambiar departamento, limpiar ubicación y activos
+ */
+function onDepartamentoChange() {
+  filtros.value.ubicacion = null
+  activosPorUbicacion.value = []
+  activosPorUbicacionSeleccionados.value = []
+  seleccionarTodosUbicacion.value = false
 }
 
 // ============================================================================
@@ -547,22 +861,26 @@ function agregarSeleccionadosACola() {
 
   colaImpresion.value.push(...nuevosActivos)
   activosSeleccionados.value = []
+  seleccionarTodosActivos.value = false
+  
+  mostrarNotificacion(`${nuevosActivos.length} activos agregados a la cola`, 'success')
 }
 
-async function agregarActivosPorUbicacion() {
-  for (const ubicacionId of ubicacionesSeleccionadas.value) {
-    const activosDeUbicacion = activos.value.filter(a =>
-      a.ubicacion_actual?.id === ubicacionId &&
-      !colaImpresion.value.some(c => c.id === a.id)
-    )
+function agregarActivosUbicacionACola() {
+  const nuevosActivos = activosPorUbicacionSeleccionados.value.filter(activo =>
+    !colaImpresion.value.some(c => c.id === activo.id)
+  )
 
-    colaImpresion.value.push(...activosDeUbicacion)
-  }
-
-  ubicacionesSeleccionadas.value = []
+  colaImpresion.value.push(...nuevosActivos)
+  activosPorUbicacionSeleccionados.value = []
+  seleccionarTodosUbicacion.value = false
+  
+  mostrarNotificacion(`${nuevosActivos.length} activos agregados a la cola`, 'success')
 }
 
 async function agregarCodigosManuales() {
+  let agregados = 0
+  
   for (const codigo of codigosManuales.value) {
     const activo = activos.value.find(a =>
       a.codigo_inventario === codigo &&
@@ -571,7 +889,14 @@ async function agregarCodigosManuales() {
 
     if (activo) {
       colaImpresion.value.push(activo)
+      agregados++
     }
+  }
+
+  if (agregados > 0) {
+    mostrarNotificacion(`${agregados} activos agregados a la cola`, 'success')
+  } else {
+    mostrarNotificacion('No se encontraron activos con los códigos ingresados', 'warning')
   }
 
   codigosManuales.value = []
@@ -579,10 +904,12 @@ async function agregarCodigosManuales() {
 
 function removerDeCola(activoId) {
   colaImpresion.value = colaImpresion.value.filter(a => a.id !== activoId)
+  mostrarNotificacion('Activo removido de la cola', 'info')
 }
 
 function limpiarCola() {
   colaImpresion.value = []
+  mostrarNotificacion('Cola de impresión limpiada', 'info')
 }
 
 function limpiarFiltros() {
@@ -592,7 +919,46 @@ function limpiarFiltros() {
     tipoEquipo: null,
     ubicacion: null,
     departamento: null,
-    busquedaUbicacion: ''
+    busquedaUbicacion: '',
+    busquedaActivo: ''
+  }
+}
+
+// ============================================================================
+// MÉTODOS - SELECCIÓN
+// ============================================================================
+
+function toggleSeleccionarTodosActivos() {
+  if (seleccionarTodosActivos.value) {
+    activosSeleccionados.value = activosFiltrados.value.map(a => a.id)
+  } else {
+    activosSeleccionados.value = []
+  }
+}
+
+function isActivoUbicacionSeleccionado(activoId) {
+  return activosPorUbicacionSeleccionados.value.some(a => a.id === activoId)
+}
+
+function toggleActivoUbicacion(activo) {
+  const index = activosPorUbicacionSeleccionados.value.findIndex(a => a.id === activo.id)
+  
+  if (index > -1) {
+    activosPorUbicacionSeleccionados.value.splice(index, 1)
+  } else {
+    activosPorUbicacionSeleccionados.value.push(activo)
+  }
+
+  // Actualizar estado de "seleccionar todos"
+  seleccionarTodosUbicacion.value = 
+    activosPorUbicacionSeleccionados.value.length === activosPorUbicacionFiltrados.value.length
+}
+
+function toggleSeleccionarTodosUbicacion() {
+  if (seleccionarTodosUbicacion.value) {
+    activosPorUbicacionSeleccionados.value = [...activosPorUbicacionFiltrados.value]
+  } else {
+    activosPorUbicacionSeleccionados.value = []
   }
 }
 
@@ -618,11 +984,15 @@ async function generarQRCode(codigo) {
 }
 
 async function generarQRsParaCola() {
+  mostrarNotificacion('Generando códigos QR...', 'info')
+  
   for (const activo of colaImpresion.value) {
     if (!activo.qrDataUrl) {
       activo.qrDataUrl = await generarQRCode(activo.codigo_inventario)
     }
   }
+  
+  mostrarNotificacion('Códigos QR generados correctamente', 'success')
 }
 
 // ============================================================================
@@ -640,7 +1010,38 @@ function cerrarVistaPrevia() {
 
 function imprimirEtiquetas() {
   window.print()
+  mostrarNotificacion('Enviando a impresión...', 'success')
 }
+
+// ============================================================================
+// MÉTODOS - HELPERS
+// ============================================================================
+
+function getEstadoColor(estado) {
+  const colores = {
+    'Operativo': 'success',
+    'En Reparación': 'warning',
+    'En Bodega TI': 'info',
+    'De Baja': 'error'
+  }
+  return colores[estado] || 'grey'
+}
+
+function mostrarNotificacion(text, color = 'success') {
+  snackbar.value = {
+    show: true,
+    text,
+    color
+  }
+}
+
+// ============================================================================
+// WATCHERS
+// ============================================================================
+
+watch(activosSeleccionados, (newVal) => {
+  seleccionarTodosActivos.value = newVal.length === activosFiltrados.value.length && newVal.length > 0
+})
 
 // ============================================================================
 // LIFECYCLE HOOKS
@@ -654,6 +1055,7 @@ onMounted(async () => {
     fetchTiposEquipo()
   ])
 })
+
 </script>
 
 <style scoped>
@@ -666,6 +1068,19 @@ onMounted(async () => {
   background: #f5f7fa;
   padding: 1rem;
   padding-bottom: 100px; /* Espacio para el FAB */
+}
+
+/* ============================================================================
+   LOADING STATE
+   ============================================================================ */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  color: #666;
 }
 
 /* ============================================================================
@@ -753,6 +1168,16 @@ onMounted(async () => {
   display: block;
 }
 
+.qr-placeholder {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: 1px dashed #999;
+}
+
 /* ============================================================================
    CÓDIGO VERTICAL (ROTADO 90 GRADOS)
    ============================================================================ */
@@ -765,6 +1190,14 @@ onMounted(async () => {
   letter-spacing: 1px;
   white-space: nowrap;
   padding: 4px 0;
+}
+
+/* ============================================================================
+   UTILIDADES
+   ============================================================================ */
+
+.gap-3 {
+  gap: 1rem;
 }
 
 /* ============================================================================
@@ -785,6 +1218,10 @@ onMounted(async () => {
   .fab-preview {
     bottom: 70px !important;
     right: 16px !important;
+  }
+
+  .print-labels-view {
+    padding: 0.75rem;
   }
 }
 
@@ -830,4 +1267,3 @@ onMounted(async () => {
   }
 }
 </style>
-

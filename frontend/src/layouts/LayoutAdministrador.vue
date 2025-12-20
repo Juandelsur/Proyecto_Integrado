@@ -1,6 +1,6 @@
 <template>
   <!-- ========================================================================
-       LAYOUT TÉCNICO - MOBILE FIRST
+       LAYOUT ADMINISTRADOR - MOBILE FIRST
        ======================================================================== -->
   <v-app>
     <!-- ====================================================================
@@ -31,19 +31,19 @@
          BOTTOM NAVIGATION (NAVEGACIÓN INFERIOR)
          ==================================================================== -->
     <v-bottom-navigation v-model="activeTab" grow color="primary" class="bottom-nav">
-      <v-btn value="home" @click="navigateTo('/tecnico/home')">
+      <v-btn value="home" @click="navigateTo('/admin/home')">
         <v-icon>mdi-home</v-icon>
         <span>Inicio</span>
       </v-btn>
 
-      <v-btn value="history" @click="navigateTo('/tecnico/history')">
-        <v-icon>mdi-history</v-icon>
-        <span>Mi Historial</span>
+      <v-btn value="history" @click="navigateTo('/admin/gestion')">
+        <v-icon>mdi-folder</v-icon>
+        <span>Gestion</span>
       </v-btn>
 
-      <v-btn value="print" @click="navigateTo('/tecnico/imprimir')">
-        <v-icon>mdi-printer</v-icon>
-        <span>Imprimir</span>
+      <v-btn value="print" @click="navigateTo('/admin/otros')">
+        <v-icon>mdi-application-cog</v-icon>
+        <span>Otros</span>
       </v-btn>
     </v-bottom-navigation>
   </v-app>

@@ -28,10 +28,11 @@ const router = createRouter({
     {
       path: '/home',
       name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('../views/HomeViewAdmin.vue'),
       meta: {
         title: 'Dashboard',
-        requiresAuth: true
+        requiresAuth: true,
+        requiresRole: ['Administrador']
       }
     },
     // ========================================================================
@@ -106,7 +107,7 @@ const router = createRouter({
       component: () => import('../layouts/LayoutTecnico.vue'),
       meta: {
         requiresAuth: true,
-        requiresRole: 'Técnico'
+        requiresRole: ['Técnico', 'Administrador']
       },
       children: [
         {
@@ -128,9 +129,9 @@ const router = createRouter({
         {
           path: 'history',
           name: 'technician-history',
-          component: () => import('../views/technician/TecnicoHistorialView.vue'),
+          component: () => import('../views/technician/MiHistorialView.vue'),
           meta: {
-            title: 'Historial de Movimientos'
+            title: 'Mis Movimientos'
           }
         },
         {
@@ -140,6 +141,19 @@ const router = createRouter({
           meta: {
             title: 'Imprimir Etiquetas'
           }
+        },
+        {
+          path: 'activos',
+          children: [
+            {
+              path: 'crear',
+              name: 'technician-crear-activo',
+              component: () => import('../views/technician/activos/CrearActivoView.vue'),
+              meta: {
+                title: 'Crear Activo - Técnico'
+              }
+            }
+          ]
         },
         {
           path: 'crear',
@@ -158,18 +172,6 @@ const router = createRouter({
           }
         }
       ]
-    },
-    // ========================================================================
-    // RUTAS DEL TÉCNICO (SIN LAYOUT - COMPATIBILIDAD)
-    // ========================================================================
-    {
-      path: '/escanear',
-      name: 'scan-qr',
-      component: () => import('../views/technician/ScannerView.vue'),
-      meta: {
-        title: 'Escanear QR',
-        requiresAuth: true
-      }
     },
     // ========================================================================
     // RUTA DE PRUEBA - QR SCANNER DEMO (SIN AUTENTICACIÓN PARA TESTING)
@@ -218,6 +220,123 @@ const router = createRouter({
         title: 'Configuración',
         requiresAuth: true
       }
+    },
+    // ========================================================================
+    // RUTAS DEL ADMINISTRADOR 
+    // ========================================================================
+    {
+      path: '/admin',
+      component: () => import('../layouts/LayoutAdministrador.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresRole: 'Administrador'
+      },
+      children: [
+        {
+          path: 'home',
+          name: 'admin-home',
+          component: () => import('../views/admin/HomeView.vue'),
+          meta: {
+            title: 'Home - Administrador'
+          }
+        },
+        {
+          path: 'otros',
+          name: 'admin-otros',
+          component: () => import('../views/admin/OtherView.vue'),
+          meta: {
+            title: 'Otros - Administrador'
+          }
+        },
+        {
+          path: 'gestion',
+          name: 'admin-gestion',
+          component: () => import('../views/admin/GestionView.vue'),
+          meta: {
+            title: 'Gestión - Administrador'
+          }
+        },
+        {
+          path: 'activos',
+          name: 'admin-activos',
+          component: () => import('../views/admin/gestion/GestionActivos.vue'),
+          meta: {
+            title: 'Gestión Activos'
+          }
+        },
+        {
+          path: 'estado-activos',
+          name: 'admin-estado-activos',
+          component: () => import('../views/admin/gestion/GestionEstadoActivo.vue'),
+          meta: {
+            title: 'Gestión Estado-Activos'
+          }
+        },
+        {
+          path: 'departamentos',
+          name: 'admin-departamentos',
+          component: () => import('../views/admin/gestion/GestionDepartamentos.vue'),
+          meta: {
+            title: 'Gestión Departamentos'
+          }
+        },
+        {
+          path: 'roles',
+          name: 'admin-roles',
+          component: () => import('../views/admin/gestion/GestionRoles.vue'),
+          meta: {
+            title: 'Gestión Roles'
+          }
+        },
+        {
+          path: 'tipos-equipo',
+          name: 'admin-tipos-equipo',
+          component: () => import('../views/admin/gestion/GestionTipoEquipo.vue'),
+          meta: {
+            title: 'Gestión Tipos de Equipo'
+          }
+        },
+        {
+          path: 'ubicaciones',
+          name: 'admin-ubicaciones',
+          component: () => import('../views/admin/gestion/GestionUbicaciones.vue'),
+          meta: {
+            title: 'Gestión Ubicaciones'
+          }
+        },
+        {
+          path: 'usuarios',
+          name: 'admin-usuarios',
+          component: () => import('../views/admin/gestion/GestionUsuarios.vue'),
+          meta: {
+            title: 'Gestión Usuarios'
+          }
+        },
+        {
+          path: 'historial',
+          name: 'admin-historial',
+          component: () => import('../views/admin/HistorialView.vue'),
+          meta: {
+            title: 'Historial - Administrador'
+          }
+        },
+        {
+          path: 'reportes',
+          name: 'admin-reportes',
+          component: () => import('../views/admin/ReportesView.vue'),
+          meta: {
+            title: 'Reportes - Administrador'
+          }
+        },
+        {
+          path: 'auditoria',
+          name: 'admin-auditoria',
+          component: () => import('../views/admin/AuditoriaView.vue'),
+          meta: {
+            title: 'Auditoría - Administrador'
+          }
+        },
+      ]
     }
   ],
 })
@@ -227,42 +346,50 @@ const router = createRouter({
 // ============================================================================
 
 router.beforeEach((to, from, next) => {
-  // Obtener el store de autenticación
   const authStore = useAuthStore()
 
-  // Actualizar el título de la página
+  // Actualizar título
   document.title = to.meta.title ? `${to.meta.title} - SCA Hospital` : 'SCA Hospital'
 
-  // Verificar si la ruta requiere autenticación
+  // 1. Verificar autenticación
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    // Redirigir al login si no está autenticado
     next({ name: 'login', query: { redirect: to.fullPath } })
     return
   }
 
-  // Verificar permisos específicos
+  // 2. Verificar rol (ahora soporta string o array)
+  if (to.meta.requiresRole) {
+    const requiredRoles = Array.isArray(to.meta.requiresRole) 
+      ? to.meta.requiresRole 
+      : [to.meta.requiresRole]
+    
+    if (!requiredRoles.includes(authStore.userRole)) {
+      console.warn(`Acceso denegado. Rol requerido: ${requiredRoles.join(' o ')}`)
+      
+      // Redirigir según el rol del usuario
+      if (authStore.userRole === 'Administrador') {
+        next({ name: 'admin-home' })
+      } else if (authStore.userRole === 'Técnico') {
+        next({ name: 'technician-home' })
+      } else {
+        next({ name: 'login' })
+      }
+      return
+    }
+  }
+
+  // 3. Verificar permisos específicos
   if (to.meta.requiresPermission) {
     const permission = to.meta.requiresPermission
     if (!authStore[permission]) {
-      // Redirigir a home si no tiene el permiso
-      alert('❌ No tienes permisos para acceder a esta página.')
-      next('/home')
+      console.warn(`Permiso denegado: ${permission}`)
+      // Redirigir al home correspondiente
+      const homeRoute = authStore.userRole === 'Administrador' ? 'admin-home' : 'technician-home'
+      next({ name: homeRoute })
       return
     }
   }
 
-  // Verificar rol específico
-  if (to.meta.requiresRole) {
-    const requiredRole = to.meta.requiresRole
-    if (authStore.userRole !== requiredRole) {
-      // Redirigir según el rol del usuario
-      alert('❌ Esta página es solo para técnicos.')
-      next('/home')
-      return
-    }
-  }
-
-  // Continuar con la navegación
   next()
 })
 

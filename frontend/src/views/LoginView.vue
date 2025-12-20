@@ -148,8 +148,8 @@ async function handleLogin() {
       redirectPath = '/tecnico/home'
       console.log('🎯 Redirigiendo a: /tecnico/home (Técnico)')
     } else if (rolNormalizado.includes('administrador') || rolNormalizado.includes('admin')) {
-      redirectPath = '/inventario'
-      console.log('🎯 Redirigiendo a: /inventario (Administrador)')
+      redirectPath = '/admin/home'
+      console.log('🎯 Redirigiendo a: /admin/home (Administrador)')
     } else if (rolNormalizado.includes('jefe')) {
       redirectPath = '/home'
       console.log('🎯 Redirigiendo a: /home (Jefe de Departamento)')
