@@ -39,7 +39,12 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 # Hosts permitidos (Render, localhost, etc.)
 # En producción: tu-app.onrender.com,tu-dominio.com
 # En desarrollo: localhost,127.0.0.1
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+#ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '192.168.1.13',  # IP local para pruebas en red
+]
 
 # CSRF Trusted Origins (CRÍTICO para Django 4+ con HTTPS en Render)
 # En producción: https://tu-app.onrender.com,https://tu-dominio.com
@@ -200,12 +205,15 @@ AUTH_USER_MODEL = 'core.Usuario'
 
 # Para desarrollo: permitir todos los orígenes (True)
 # Para producción: especificar orígenes permitidos (False)
-CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'True') == 'True'
+#CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'True') == 'True'
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Orígenes permitidos en producción (separados por comas en variable de entorno)
 # Ejemplo: https://tu-frontend.vercel.app,https://tu-dominio.com
-CORS_ALLOWED_ORIGINS_STR = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
-CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(',') if origin.strip()]
+
+
+#CORS_ALLOWED_ORIGINS_STR = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
+#CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(',') if origin.strip()]
 
 # Permitir cookies y credenciales en requests CORS
 CORS_ALLOW_CREDENTIALS = True

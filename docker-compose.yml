@@ -54,9 +54,11 @@ services:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "5173:5173"
+      - "3000:5357" # Asegura que el puerto esté abierto al exterior
+    # Si usas Vite, a veces necesitas pasar el flag --host en el command
+    command: npm run dev -- --host 0.0.0.0
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://192.168.1.13:8000 # Asegúrate de que esta URL apunte al backend accesible
       - CHOKIDAR_USEPOLLING=true
     depends_on:
       - backend
