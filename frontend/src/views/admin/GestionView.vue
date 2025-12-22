@@ -71,57 +71,6 @@
         </v-card>
       </v-col>
     </v-row>
-
-    <!-- ====================================================================
-         ACCIONES RÁPIDAS
-         ==================================================================== -->
-    <v-card class="mt-6">
-      <v-card-title class="text-h6 font-weight-bold">
-        Acciones Rápidas
-      </v-card-title>
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" sm="6" md="4">
-            <v-btn
-              block
-              color="success"
-              variant="tonal"
-              size="large"
-              prepend-icon="mdi-plus-circle"
-              @click="accionRapida('crear-activo')"
-            >
-              Crear Activo
-            </v-btn>
-          </v-col>
-          
-          <v-col cols="12" sm="6" md="4">
-            <v-btn
-              block
-              color="primary"
-              variant="tonal"
-              size="large"
-              prepend-icon="mdi-account-plus"
-              @click="accionRapida('crear-usuario')"
-            >
-              Crear Usuario
-            </v-btn>
-          </v-col>
-          
-          <v-col cols="12" sm="6" md="4">
-            <v-btn
-              block
-              color="info"
-              variant="tonal"
-              size="large"
-              prepend-icon="mdi-map-marker-plus"
-              @click="accionRapida('crear-ubicacion')"
-            >
-              Crear Ubicación
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
   </div>
 </template>
 

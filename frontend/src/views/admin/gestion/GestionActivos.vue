@@ -61,6 +61,20 @@
         </v-col>
         <v-col cols="12" sm="4">
           <v-select
+            v-model="filtroEstado"
+            :items="estadosDisponibles"
+            item-title="nombre_estado"
+            item-value="id"
+            label="Filtrar por Estado Activo"
+            variant="outlined"
+            density="comfortable"
+            clearable
+            prepend-inner-icon="mdi-devices"
+            @update:model-value="filtrarRegistros"
+          ></v-select>
+        </v-col>
+        <v-col cols="12" sm="4">
+          <v-select
             v-model="filtroUbicacion"
             :items="ubicacionesDisponibles"
             item-title="nombre_ubicacion"
@@ -547,6 +561,7 @@ const paginaActual = ref(1)
 // Filtros
 const filtroMarca = ref(null)
 const filtroTipo = ref(null)
+const filtroEstado = ref(null)
 const filtroUbicacion = ref(null)
 
 const snackbar = ref({
@@ -588,6 +603,13 @@ const tiposDisponibles = computed(() => {
 })
 
 /**
+ * Obtiene los tipos únicos disponibles para el filtro
+ */
+const estadosDisponibles = computed(() => {
+  return estados.value
+})
+
+/**
  * Obtiene las ubicaciones únicas disponibles para el filtro
  */
 const ubicacionesDisponibles = computed(() => {
@@ -624,6 +646,13 @@ const registrosFiltrados = computed(() => {
   if (filtroTipo.value) {
     resultado = resultado.filter(registro => 
       registro.tipo?.id === filtroTipo.value
+    )
+  }
+
+  // Filtro por Estado del Activo
+  if (filtroEstado.value) {
+    resultado = resultado.filter(registro => 
+      registro.estado?.id === filtroEstado.value
     )
   }
 

@@ -152,7 +152,15 @@ const router = createRouter({
               meta: {
                 title: 'Crear Activo - Técnico'
               }
-            }
+            },
+            {
+              path: 'editar',
+              name: 'technician-edit-activo',
+              component: () => import('../views/technician/activos/EditarActivoView.vue'),
+              meta: {
+                title: 'Editar Activo - Técnico'
+              }
+            },
           ]
         },
         {
@@ -188,7 +196,7 @@ const router = createRouter({
     {
       path: '/confirmar-equipo/:id',
       name: 'confirm-asset',
-      component: () => import('../views/technician/ConfirmAssetView.vue'),
+      component: () => import('../views/technician/MovimientoTecnicoView.vue'),
       meta: {
         title: 'Confirmar Equipo',
         requiresAuth: true
@@ -200,15 +208,6 @@ const router = createRouter({
       component: () => import('../views/technician/MovementSuccessView.vue'),
       meta: {
         title: 'Registro Exitoso',
-        requiresAuth: true
-      }
-    },
-    {
-      path: '/historico',
-      name: 'history',
-      component: () => import('../views/technician/HistoryView.vue'),
-      meta: {
-        title: 'Histórico',
         requiresAuth: true
       }
     },
@@ -334,6 +333,14 @@ const router = createRouter({
           component: () => import('../views/admin/AuditoriaView.vue'),
           meta: {
             title: 'Auditoría - Administrador'
+          }
+        },
+        {
+          path: 'imprimir-qr',
+          name: 'admin-imprimir-qr',
+          component: () => import('../views/ImprimirQrView.vue'),
+          meta: {
+            title: 'Imprimir QR - Administrador'
           }
         },
       ]

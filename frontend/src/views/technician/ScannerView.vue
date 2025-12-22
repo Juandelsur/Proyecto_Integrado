@@ -1,445 +1,466 @@
 <!--
   ============================================================================
-  TECNICO SCAN VIEW - CENTRO DE DECISIÓN CON STATE MACHINE + IMPRESIÓN QR
-  ============================================================================
-
-  DESCRIPCIÓN:
-  Vista crítica que actúa como un Centro de Decisión para el técnico.
-  Implementa un patrón de State Machine con 3 estados visuales internos
-  sin navegación entre rutas, eliminando tiempos de carga.
-
-  PATRÓN DE DISEÑO: SINGLE PAGE STATE MACHINE
-
-  ESTADOS:
-  1. SCANNING - Interfaz de captura (estado inicial)
-  2. VIEW_ASSET - Detalle de un activo (prefijo INV-)
-  3. VIEW_LOCATION - Inventario de una ubicación (prefijo LOC-)
-
-  CARACTERÍSTICAS:
-  - Transiciones instantáneas entre estados
-  - Sin navegación entre rutas (mejor UX móvil)
-  - Tabla móvil optimizada con diseño de 2 líneas
-  - Modal de impresión con generación de QR del lado del cliente
-  - Generación de QR en Base64 usando librería 'qrcode'
-  - Diseño de etiquetas con CSS Grid (3 columnas)
-  - Código vertical rotado 90 grados
-  - Flujo circular (desde ubicación → activo → ubicación)
-
-  DEPENDENCIAS:
-  - Vue 3 Composition API
-  - Vuetify 3
-  - Vue Router
-  - API Client
-  - qrcode (para generación de QR en Base64)
-
-  AUTOR: Senior Frontend Developer
-  FECHA: 2025-12-01
+  TECNICO SCAN VIEW - DISEÑO MEJORADO CON GLASSMORPHISM Y ANIMACIONES
   ============================================================================
 -->
 
 <template>
   <div class="scanner-view">
     <!-- ========================================================================
-         ESTADO 1: SCANNING (Interfaz de Captura)
+         ESTADO 1: SCANNING (Interfaz de Captura) - MEJORADO
          ======================================================================== -->
     <div v-if="uiState === 'SCANNING'" class="scanning-state">
-      <!-- Escáner QR Real -->
-      <QRScanner
-        @scan-success="handleQRScanSuccess"
-        @scan-error="handleQRScanError"
-        class="mb-4"
-      />
+      <!-- Hero Section con Glassmorphism -->
+      <div class="hero-section">
+        <div class="hero-content">
+          <v-icon size="64" color="primary" class="mb-4">mdi-qrcode-scan</v-icon>
+          <h1 class="text-h4 font-weight-bold mb-2">Escanear Activo</h1>
+          <p class="text-body-1 text-medium-emphasis">
+            Apunta la cámara al código QR o ingresa el código manualmente
+          </p>
+        </div>
+      </div>
 
-      <!-- Input Manual -->
-      <v-text-field
-        v-model="manualCode"
-        label="Ingresar código manualmente"
-        prepend-inner-icon="mdi-barcode-scan"
-        variant="outlined"
-        density="comfortable"
-        hint="Ingresa INV-XX-XXXXXX (Activo) o LOC-XXXXXX (Ubicación)"
-        persistent-hint
-        @keyup.enter="handleManualSubmit"
-      >
-        <template v-slot:append>
+      <!-- Escáner QR con Card Mejorado -->
+      <v-card class="scanner-card glass-card mb-6" elevation="0">
+        <v-card-text class="pa-6">
+          <QRScanner
+            @scan-success="handleQRScanSuccess"
+            @scan-error="handleQRScanError"
+          />
+        </v-card-text>
+      </v-card>
+
+      <!-- Input Manual Mejorado -->
+      <v-card class="glass-card mb-6" elevation="0">
+        <v-card-text class="pa-6">
+          <div class="text-subtitle-2 mb-3 d-flex align-center">
+            <v-icon start color="primary">mdi-keyboard</v-icon>
+            Ingreso Manual
+          </div>
+          
+          <v-text-field
+            v-model="manualCode"
+            label="Código de activo o ubicación"
+            prepend-inner-icon="mdi-barcode-scan"
+            variant="outlined"
+            density="comfortable"
+            hint="Formato: INV-XX-XXXXXX o LOC-XXXXXX"
+            persistent-hint
+            @keyup.enter="handleManualSubmit"
+            class="mb-2"
+          >
+            <template v-slot:append-inner>
+              <v-fade-transition>
+                <v-btn
+                  v-if="manualCode"
+                  icon="mdi-close-circle"
+                  variant="text"
+                  size="small"
+                  @click="manualCode = ''"
+                ></v-btn>
+              </v-fade-transition>
+            </template>
+          </v-text-field>
+
           <v-btn
             color="primary"
-            variant="flat"
+            variant="elevated"
+            block
+            size="large"
+            prepend-icon="mdi-magnify"
             @click="handleManualSubmit"
             :disabled="!manualCode"
+            class="mt-2"
           >
             Buscar
           </v-btn>
-        </template>
-      </v-text-field>
+        </v-card-text>
+      </v-card>
 
-      <!-- Contexto Rápido: Últimos 5 Movimientos Personales -->
-      <v-card class="mt-6" variant="outlined">
-        <v-card-title class="text-subtitle-1">
-          <v-icon start>mdi-history</v-icon>
-          Mis Últimos Movimientos
+      <!-- Últimos Movimientos con Diseño Mejorado -->
+      <v-card class="glass-card" elevation="0">
+        <v-card-title class="d-flex align-center pa-6 pb-4">
+          <v-icon start color="primary">mdi-history</v-icon>
+          <span class="text-h6">Actividad Reciente</span>
+          <v-spacer></v-spacer>
+          <v-chip size="small" color="primary" variant="tonal">
+            {{ ultimosMovimientos.length }}
+          </v-chip>
         </v-card-title>
 
-        <v-card-text>
-          <v-list v-if="!loadingMovimientos && ultimosMovimientos.length > 0" density="compact">
+        <v-card-text class="pa-0">
+          <v-list v-if="!loadingMovimientos && ultimosMovimientos.length > 0" class="bg-transparent">
             <v-list-item
-              v-for="mov in ultimosMovimientos.slice(0, 5)"
+              v-for="(mov, index) in ultimosMovimientos.slice(0, 5)"
               :key="mov.id"
-              :title="`${mov.activo?.marca || ''} ${mov.activo?.modelo || ''}`"
-              :subtitle="`${mov.tipo_movimiento} • ${formatTimeAgo(mov.fecha_movimiento)}`"
+              class="movement-item"
+              :class="{ 'border-t': index > 0 }"
             >
               <template v-slot:prepend>
-                <v-avatar :color="getMovementColor(mov.tipo_movimiento)" size="small">
-                  <v-icon size="small">{{ getMovementIcon(mov.tipo_movimiento) }}</v-icon>
+                <v-avatar 
+                  :color="getMovementColor(mov.tipo_movimiento)" 
+                  size="48"
+                  class="movement-avatar"
+                >
+                  <v-icon size="24" color="white">
+                    {{ getMovementIcon(mov.tipo_movimiento) }}
+                  </v-icon>
                 </v-avatar>
               </template>
+
+              <v-list-item-title class="font-weight-medium mb-1">
+                {{ mov.activo?.marca || '' }} {{ mov.activo?.modelo || '' }}
+              </v-list-item-title>
+
+              <v-list-item-subtitle class="d-flex align-center gap-2">
+                <v-chip size="x-small" :color="getMovementColor(mov.tipo_movimiento)" variant="tonal">
+                  {{ mov.tipo_movimiento }}
+                </v-chip>
+                <span class="text-caption">{{ formatTimeAgo(mov.fecha_movimiento) }}</span>
+              </v-list-item-subtitle>
             </v-list-item>
           </v-list>
 
-          <div v-else-if="loadingMovimientos" class="text-center py-4">
-            <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          <div v-else-if="loadingMovimientos" class="text-center py-12">
+            <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
+            <p class="text-body-2 mt-4 text-medium-emphasis">Cargando actividad...</p>
           </div>
 
-          <div v-else class="text-center py-4 text-grey">
-            <v-icon size="48">mdi-inbox</v-icon>
-            <p class="mt-2">No hay movimientos recientes</p>
+          <div v-else class="text-center py-12">
+            <v-icon size="64" color="grey-lighten-1">mdi-inbox-outline</v-icon>
+            <p class="text-body-1 mt-4 text-medium-emphasis">No hay movimientos recientes</p>
           </div>
         </v-card-text>
       </v-card>
     </div>
 
     <!-- ========================================================================
-         ESTADO 2: VIEW_ASSET (Detalle de Activo)
+         ESTADO 2: VIEW_ASSET (Detalle de Activo) - MEJORADO
          ======================================================================== -->
     <div v-else-if="uiState === 'VIEW_ASSET'" class="view-asset-state">
-      <!-- Navegación -->
-      <v-btn
-        variant="text"
-        prepend-icon="mdi-arrow-left"
-        class="mb-4"
-        @click="resetToScanning"
-      >
-        Volver al Escáner
-      </v-btn>
+      <!-- Header con Navegación -->
+      <div class="d-flex align-center mb-6">
+        <v-btn
+          icon="mdi-arrow-left"
+          variant="text"
+          size="large"
+          @click="resetToScanning"
+        ></v-btn>
+        <div class="ml-3">
+          <div class="text-overline text-primary">Detalle del Activo</div>
+          <div class="text-h6 font-weight-bold">{{ currentAsset?.codigo_inventario }}</div>
+        </div>
+      </div>
 
-      <!-- Info Card del Activo -->
-      <v-card v-if="currentAsset" class="mb-4">
-        <v-card-title class="bg-primary text-white">
-          <v-icon start>mdi-package-variant</v-icon>
-          Información del Activo
-        </v-card-title>
+      <!-- Card Principal del Activo con Gradiente -->
+      <v-card v-if="currentAsset" class="asset-card mb-6" elevation="0">
+        <div class="asset-header">
+          <div class="asset-header-content pa-6">
+            <v-icon size="48" color="white" class="mb-3">mdi-package-variant</v-icon>
+            <h2 class="text-h5 font-weight-bold mb-1">
+              {{ currentAsset.marca }} {{ currentAsset.modelo }}
+            </h2>
+            <div class="text-body-2 opacity-90">
+              {{ currentAsset.tipo?.nombre_tipo || 'Sin tipo' }}
+            </div>
+          </div>
+        </div>
 
-        <v-card-text class="pt-4">
+        <v-card-text class="pa-6">
           <v-row dense>
-            <v-col cols="12">
-              <div class="text-h6 font-weight-bold">
-                {{ currentAsset.marca }} {{ currentAsset.modelo }}
+            <v-col cols="6" sm="4">
+              <div class="info-block">
+                <v-icon size="20" class="mb-2" color="primary">mdi-barcode</v-icon>
+                <div class="text-caption text-medium-emphasis">Código</div>
+                <div class="text-body-1 font-weight-bold">{{ currentAsset.codigo_inventario }}</div>
               </div>
             </v-col>
 
-            <v-col cols="12" sm="6">
-              <div class="text-caption text-grey">Código de Inventario</div>
-              <div class="font-weight-medium">{{ currentAsset.codigo_inventario }}</div>
+            <v-col cols="6" sm="4">
+              <div class="info-block">
+                <v-icon size="20" class="mb-2" color="primary">mdi-identifier</v-icon>
+                <div class="text-caption text-medium-emphasis">Serie</div>
+                <div class="text-body-1 font-weight-bold">{{ currentAsset.numero_serie || 'N/A' }}</div>
+              </div>
             </v-col>
 
-            <v-col cols="12" sm="6">
-              <div class="text-caption text-grey">Número de Serie</div>
-              <div class="font-weight-medium">{{ currentAsset.numero_serie || 'N/A' }}</div>
-            </v-col>
-
-            <v-col cols="12" sm="6">
-              <div class="text-caption text-grey">Tipo de Equipo</div>
-              <div class="font-weight-medium">{{ currentAsset.tipo?.nombre_tipo || 'N/A' }}</div>
-            </v-col>
-
-            <v-col cols="12" sm="6">
-              <div class="text-caption text-grey">Estado</div>
-              <v-chip size="small" :color="getEstadoColor(currentAsset.estado?.nombre_estado)">
-                {{ currentAsset.estado?.nombre_estado || 'N/A' }}
-              </v-chip>
+            <v-col cols="6" sm="4">
+              <div class="info-block">
+                <v-icon size="20" class="mb-2" color="primary">mdi-state-machine</v-icon>
+                <div class="text-caption text-medium-emphasis">Estado</div>
+                <v-chip 
+                  size="small" 
+                  :color="getEstadoColor(currentAsset.estado?.nombre_estado)"
+                  class="mt-1"
+                >
+                  {{ currentAsset.estado?.nombre_estado || 'N/A' }}
+                </v-chip>
+              </div>
             </v-col>
 
             <v-col cols="12">
-              <div class="text-caption text-grey">Ubicación Actual</div>
-              <div class="font-weight-medium">
-                {{ currentAsset.ubicacion_actual?.nombre_ubicacion || 'N/A' }}
-                <span v-if="currentAsset.ubicacion_actual?.departamento" class="text-grey">
-                  ({{ currentAsset.ubicacion_actual.departamento.nombre_departamento }})
-                </span>
+              <v-divider class="my-4"></v-divider>
+              <div class="info-block">
+                <v-icon size="20" class="mb-2" color="primary">mdi-map-marker</v-icon>
+                <div class="text-caption text-medium-emphasis">Ubicación Actual</div>
+                <div class="text-body-1 font-weight-bold">
+                  {{ currentAsset.ubicacion_actual?.nombre_ubicacion || 'N/A' }}
+                </div>
+                <div v-if="currentAsset.ubicacion_actual?.departamento" class="text-caption text-medium-emphasis mt-1">
+                  {{ currentAsset.ubicacion_actual.departamento.nombre_departamento }}
+                </div>
               </div>
             </v-col>
           </v-row>
         </v-card-text>
       </v-card>
 
-      <!-- Acciones Críticas -->
-      <v-row dense>
-        <v-col cols="12">
-          <v-btn
-            color="primary"
-            variant="flat"
-            block
-            size="large"
-            prepend-icon="mdi-swap-horizontal"
-            @click="generarMovimiento"
-          >
-            Generar Movimiento
-          </v-btn>
-        </v-col>
+      <!-- Acciones con Diseño Mejorado -->
+      <div class="actions-grid">
+        <v-card class="action-card" @click="generarMovimiento" elevation="0">
+          <v-card-text class="text-center pa-6">
+            <div class="action-icon-wrapper mb-3">
+              <v-icon size="32" color="primary">mdi-swap-horizontal</v-icon>
+            </div>
+            <div class="text-subtitle-1 font-weight-bold">Generar Movimiento</div>
+            <div class="text-caption text-medium-emphasis">Trasladar o asignar</div>
+          </v-card-text>
+        </v-card>
 
-        <v-col cols="12">
-          <v-btn
-            color="secondary"
-            variant="flat"
-            block
-            size="large"
-            prepend-icon="mdi-pencil"
-            @click="actualizarActivo"
-          >
-            Actualizar Activo
-          </v-btn>
-        </v-col>
+        <v-card class="action-card" @click="actualizarActivo" elevation="0">
+          <v-card-text class="text-center pa-6">
+            <div class="action-icon-wrapper mb-3">
+              <v-icon size="32" color="secondary">mdi-pencil</v-icon>
+            </div>
+            <div class="text-subtitle-1 font-weight-bold">Actualizar</div>
+            <div class="text-caption text-medium-emphasis">Editar información</div>
+          </v-card-text>
+        </v-card>
 
-        <v-col cols="12">
-          <v-btn
-            color="info"
-            variant="outlined"
-            block
-            size="large"
-            prepend-icon="mdi-history"
-            @click="verHistorial"
-          >
-            Ver Historial
-          </v-btn>
-        </v-col>
-      </v-row>
+        <v-card class="action-card" @click="verHistorial" elevation="0">
+          <v-card-text class="text-center pa-6">
+            <div class="action-icon-wrapper mb-3">
+              <v-icon size="32" color="info">mdi-history</v-icon>
+            </div>
+            <div class="text-subtitle-1 font-weight-bold">Historial</div>
+            <div class="text-caption text-medium-emphasis">Ver movimientos</div>
+          </v-card-text>
+        </v-card>
+      </div>
     </div>
 
     <!-- ========================================================================
-         ESTADO 3: VIEW_LOCATION (Inventario de Ubicación)
+         ESTADO 3: VIEW_LOCATION (Inventario de Ubicación) - MEJORADO
          ======================================================================== -->
     <div v-else-if="uiState === 'VIEW_LOCATION'" class="view-location-state">
-      <!-- ====================================================================
-           HEADER DE UBICACIÓN (MEJORADO)
-           ==================================================================== -->
-      <div class="d-flex align-center mb-4">
-        <!-- Navegación: Volver a SCANNING -->
-        <v-btn
-          icon="mdi-arrow-left"
-          variant="text"
-          @click="resetToScanning"
-        >
-        </v-btn>
+      <!-- Header Mejorado -->
+      <div class="location-header glass-card mb-6">
+        <div class="d-flex align-center pa-6">
+          <v-btn
+            icon="mdi-arrow-left"
+            variant="text"
+            size="large"
+            @click="resetToScanning"
+          ></v-btn>
 
-        <!-- Títulos: Nombre + Código de Ubicación -->
-        <div class="flex-grow-1 ml-2">
-          <div class="text-h6 font-weight-bold">{{ currentLocation?.nombre_ubicacion }}</div>
-          <div class="text-caption text-grey">{{ currentLocation?.codigo_qr }}</div>
+          <div class="flex-grow-1 ml-3">
+            <div class="text-overline text-primary">Ubicación</div>
+            <div class="text-h6 font-weight-bold">{{ currentLocation?.nombre_ubicacion }}</div>
+            <div class="text-caption text-medium-emphasis">{{ currentLocation?.codigo_qr }}</div>
+          </div>
+
+          <v-btn
+            icon="mdi-printer"
+            variant="tonal"
+            color="primary"
+            size="large"
+            @click="abrirModalImpresion"
+          ></v-btn>
         </div>
-
-        <!-- Acción Contextual: Botón de Impresión -->
-        <v-tooltip text="Imprimir Etiquetas de esta Sala" location="bottom">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              icon="mdi-printer"
-              variant="text"
-              color="secondary"
-              v-bind="props"
-              @click="abrirModalImpresion"
-            >
-            </v-btn>
-          </template>
-        </v-tooltip>
       </div>
 
-      <!-- Tabs: Inventario y Movimientos -->
-      <v-tabs v-model="locationTab" bg-color="primary" dark class="mb-4">
-        <v-tab value="inventario">
-          <v-icon start>mdi-package-variant-closed</v-icon>
-          Inventario ({{ activosDeUbicacion.length }})
+      <!-- Tabs Mejorados -->
+      <v-tabs v-model="locationTab" class="mb-6" color="primary" density="compact">
+        <v-tab value="inventario" class="text-none">
+          <v-icon start size="20">mdi-package-variant-closed</v-icon>
+          Inventario
+          <v-chip size="x-small" class="ml-2" color="primary" variant="tonal">
+            {{ activosDeUbicacion.length }}
+          </v-chip>
         </v-tab>
-        <v-tab value="movimientos">
-          <v-icon start>mdi-swap-horizontal</v-icon>
+        <v-tab value="movimientos" class="text-none">
+          <v-icon start size="20">mdi-swap-horizontal</v-icon>
           Movimientos
         </v-tab>
       </v-tabs>
 
       <v-window v-model="locationTab">
-        <!-- TAB 1: INVENTARIO (Tabla Móvil) -->
+        <!-- TAB 1: INVENTARIO -->
         <v-window-item value="inventario">
-          <!-- Filtros -->
-          <v-row dense class="mb-4">
-            <v-col cols="12" md="8">
-              <v-text-field
-                v-model="filtroInventario.busqueda"
-                label="Buscar activo"
-                prepend-inner-icon="mdi-magnify"
-                variant="outlined"
-                density="compact"
-                clearable
-              ></v-text-field>
-            </v-col>
+          <v-card class="glass-card mb-4" elevation="0">
+            <v-card-text class="pa-4">
+              <v-row dense>
+                <v-col cols="12" md="8">
+                  <v-text-field
+                    v-model="filtroInventario.busqueda"
+                    label="Buscar activo"
+                    prepend-inner-icon="mdi-magnify"
+                    variant="outlined"
+                    density="compact"
+                    clearable
+                    hide-details
+                  ></v-text-field>
+                </v-col>
 
-            <v-col cols="12" md="4">
-              <v-select
-                v-model="filtroInventario.tipo"
-                :items="tiposEquipo"
-                item-title="nombre_tipo"
-                item-value="id"
-                label="Tipo de Equipo"
-                variant="outlined"
-                density="compact"
-                clearable
-              ></v-select>
-            </v-col>
-          </v-row>
+                <v-col cols="12" md="4">
+                  <v-select
+                    v-model="filtroInventario.tipo"
+                    :items="tiposEquipo"
+                    item-title="nombre_tipo"
+                    item-value="id"
+                    label="Tipo"
+                    variant="outlined"
+                    density="compact"
+                    clearable
+                    hide-details
+                  ></v-select>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
 
-          <!-- Tabla Móvil con Diseño de 2 Líneas -->
-          <v-data-table
-            :headers="headersInventario"
-            :items="activosFiltrados"
-            :loading="loadingActivos"
-            :items-per-page="10"
-            class="elevation-1"
-            @click:row="handleActivoClick"
+          <!-- Lista de Activos Mejorada -->
+          <div v-if="loadingActivos" class="text-center py-12">
+            <v-progress-circular indeterminate color="primary" size="48"></v-progress-circular>
+          </div>
+
+          <div v-else-if="activosFiltrados.length === 0" class="text-center py-12">
+            <v-icon size="64" color="grey-lighten-1">mdi-package-variant-closed-remove</v-icon>
+            <p class="text-body-1 mt-4 text-medium-emphasis">No hay activos en esta ubicación</p>
+          </div>
+
+          <v-card 
+            v-else
+            v-for="activo in activosFiltrados" 
+            :key="activo.id"
+            class="asset-list-item glass-card mb-3"
+            @click="handleActivoClick(null, { item: activo })"
+            elevation="0"
           >
-            <template v-slot:loading>
-              <v-skeleton-loader type="table-row@10"></v-skeleton-loader>
-            </template>
+            <v-card-text class="pa-4">
+              <div class="d-flex align-center">
+                <v-avatar 
+                  :color="getEstadoColor(activo.estado?.nombre_estado)" 
+                  size="48"
+                  class="mr-4"
+                >
+                  <v-icon color="white">mdi-package-variant</v-icon>
+                </v-avatar>
 
-            <template v-slot:no-data>
-              <div class="text-center py-8">
-                <v-icon size="64" color="grey">mdi-package-variant-closed-remove</v-icon>
-                <p class="text-h6 mt-4">No hay activos en esta ubicación</p>
-              </div>
-            </template>
-
-            <!-- Diseño Móvil de 2 Líneas -->
-            <template v-slot:item="{ item }">
-              <tr @click="handleActivoClick(null, { item })" style="cursor: pointer;">
-                <td colspan="4" class="pa-3">
-                  <div class="mobile-row">
-                    <!-- Línea 1: Nombre + Estado -->
-                    <div class="d-flex align-center justify-space-between mb-1">
-                      <span class="font-weight-bold">{{ item.marca }} {{ item.modelo }}</span>
-                      <v-chip size="x-small" :color="getEstadoColor(item.estado?.nombre_estado)">
-                        {{ item.estado?.nombre_estado }}
-                      </v-chip>
-                    </div>
-
-                    <!-- Línea 2: Código | Marca | Tipo -->
-                    <div class="text-caption text-grey">
-                      {{ item.codigo_inventario }} | {{ item.marca }} | {{ item.tipo?.nombre_tipo }}
-                    </div>
+                <div class="flex-grow-1">
+                  <div class="text-subtitle-1 font-weight-bold mb-1">
+                    {{ activo.marca }} {{ activo.modelo }}
                   </div>
-                </td>
-              </tr>
-            </template>
-          </v-data-table>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ activo.codigo_inventario }} • {{ activo.tipo?.nombre_tipo }}
+                  </div>
+                </div>
+
+                <div class="text-right">
+                  <v-chip 
+                    size="small" 
+                    :color="getEstadoColor(activo.estado?.nombre_estado)"
+                  >
+                    {{ activo.estado?.nombre_estado }}
+                  </v-chip>
+                </div>
+              </div>
+            </v-card-text>
+          </v-card>
         </v-window-item>
 
         <!-- TAB 2: MOVIMIENTOS -->
         <v-window-item value="movimientos">
-          <v-card variant="outlined">
-            <v-card-text class="text-center py-8">
-              <v-icon size="64" color="grey">mdi-swap-horizontal</v-icon>
+          <v-card class="glass-card" elevation="0">
+            <v-card-text class="text-center py-12">
+              <v-icon size="64" color="grey-lighten-1">mdi-swap-horizontal</v-icon>
               <p class="text-h6 mt-4">Historial de Movimientos</p>
-              <p class="text-grey">Funcionalidad en desarrollo</p>
+              <p class="text-body-2 text-medium-emphasis">Próximamente</p>
             </v-card-text>
           </v-card>
         </v-window-item>
       </v-window>
     </div>
 
-    <!-- Snackbar para Errores -->
+    <!-- Snackbar Mejorado -->
     <v-snackbar
       v-model="showError"
-      color="error"
+      :color="snackbarColor"
       :timeout="3000"
       location="top"
+      variant="elevated"
     >
-      {{ errorMessage }}
+      <div class="d-flex align-center">
+        <v-icon start>{{ snackbarIcon }}</v-icon>
+        {{ errorMessage }}
+      </div>
       <template v-slot:actions>
         <v-btn variant="text" @click="showError = false">Cerrar</v-btn>
       </template>
     </v-snackbar>
 
-    <!-- ========================================================================
-         MODAL DE IMPRESIÓN - GENERACIÓN DE QR DEL LADO DEL CLIENTE
-         ======================================================================== -->
+    <!-- Modal de Impresión Mejorado -->
     <v-dialog v-model="dialogImpresion" fullscreen transition="dialog-bottom-transition">
       <v-card>
-        <!-- ================================================================
-             FASE DE SELECCIÓN - HEADER DEL DIÁLOGO
-             ================================================================ -->
-        <v-app-bar color="secondary" dark>
-          <!-- Botón Cerrar (X) -->
+        <v-app-bar color="primary" density="comfortable">
           <v-btn icon="mdi-close" @click="cerrarModalImpresion"></v-btn>
-
-          <!-- Título -->
-          <v-toolbar-title>Seleccionar Activos a Imprimir</v-toolbar-title>
-
+          <v-toolbar-title>Imprimir Etiquetas</v-toolbar-title>
           <v-spacer></v-spacer>
-
-          <!-- Botones de Acción -->
           <v-btn
             variant="text"
             prepend-icon="mdi-checkbox-multiple-marked"
             @click="seleccionarTodosActivos"
-            class="mr-2"
           >
-            Seleccionar Todos
+            Todos
           </v-btn>
-
           <v-btn
             variant="text"
-            prepend-icon="mdi-checkbox-multiple-blank-outline"
+            prepend-icon="mdi-checkbox-blank-outline"
             @click="deseleccionarTodosActivos"
-            class="mr-4"
           >
-            Deseleccionar
+            Ninguno
           </v-btn>
-
-          <!-- Botón Principal: IMPRIMIR AHORA -->
           <v-btn
             variant="elevated"
             color="white"
             prepend-icon="mdi-printer"
             @click="imprimirEtiquetas"
             :disabled="activosSeleccionados.length === 0"
+            class="ml-2"
           >
-            <span style="color: #424242;">IMPRIMIR AHORA</span>
+            <span class="text-primary">Imprimir</span>
           </v-btn>
         </v-app-bar>
 
-        <!-- ================================================================
-             CUERPO DEL DIÁLOGO - LISTA DE SELECCIÓN
-             ================================================================ -->
-        <v-card-text class="pa-4">
-          <!-- Contador de Selección -->
-          <v-alert
-            type="info"
-            variant="tonal"
-            class="mb-4"
-            prominent
-          >
+        <v-card-text class="pa-6">
+          <v-alert type="info" variant="tonal" class="mb-6" prominent>
             <div class="d-flex align-center">
               <v-icon size="32" class="mr-3">mdi-information</v-icon>
               <div>
                 <div class="text-h6">
-                  {{ activosSeleccionados.length }} de {{ activosDeUbicacion.length }} activos seleccionados
+                  {{ activosSeleccionados.length }} de {{ activosDeUbicacion.length }} seleccionados
                 </div>
                 <div class="text-caption">
-                  Selecciona los activos que deseas imprimir. Las etiquetas se generarán automáticamente.
+                  Selecciona los activos para generar etiquetas con código QR
                 </div>
               </div>
             </div>
           </v-alert>
 
-          <!-- Lista de Activos con Checkboxes -->
           <v-card variant="outlined" class="mb-6">
             <v-card-text>
-              <div class="activos-list" style="max-height: 400px; overflow-y: auto;">
+              <div style="max-height: 400px; overflow-y: auto;">
                 <v-checkbox
                   v-for="activo in activosDeUbicacion"
                   :key="activo.id"
@@ -447,18 +468,17 @@
                   :value="activo.id"
                   hide-details
                   class="mb-3"
-                  color="secondary"
+                  color="primary"
                 >
                   <template v-slot:label>
-                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                    <div class="d-flex align-center justify-space-between w-100">
                       <div>
-                        <span class="font-weight-bold text-body-1">
+                        <div class="font-weight-bold">
                           {{ activo.marca }} {{ activo.modelo }}
-                        </span>
-                        <br>
-                        <span class="text-caption text-grey">
-                          {{ activo.codigo_inventario }} | {{ activo.tipo?.nombre_tipo }}
-                        </span>
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          {{ activo.codigo_inventario }} • {{ activo.tipo?.nombre_tipo }}
+                        </div>
                       </div>
                       <v-chip size="small" :color="getEstadoColor(activo.estado?.nombre_estado)">
                         {{ activo.estado?.nombre_estado }}
@@ -470,25 +490,16 @@
             </v-card-text>
           </v-card>
 
-          <!-- ============================================================
-               VISTA PREVIA DE ETIQUETAS
-               ============================================================ -->
           <div class="preview-section">
-            <h3 class="text-h6 mb-3">
-              <v-icon start color="secondary">mdi-eye</v-icon>
-              Vista Previa de Etiquetas
+            <h3 class="text-h6 mb-4">
+              <v-icon start color="primary">mdi-eye</v-icon>
+              Vista Previa
             </h3>
 
-            <v-alert v-if="activosSeleccionados.length === 0" type="warning" variant="tonal" class="mb-4">
-              <v-icon start>mdi-alert</v-icon>
-              Selecciona al menos un activo para ver la vista previa de las etiquetas.
+            <v-alert v-if="activosSeleccionados.length === 0" type="warning" variant="tonal">
+              Selecciona activos para ver la vista previa
             </v-alert>
 
-            <!-- ========================================================
-                 ÁREA DE IMPRESIÓN
-                 - Visible en pantalla como vista previa
-                 - Renderizada para impresión con estilos @media print
-                 ======================================================== -->
             <div id="print-area" class="print-area">
               <div class="labels-grid">
                 <div
@@ -497,7 +508,6 @@
                   class="label-item"
                 >
                   <div class="label-content">
-                    <!-- Nombre del Activo (Izquierda) -->
                     <div class="label-nombre">
                       <div class="nombre-text">
                         {{ getActivoById(activoId)?.marca }} {{ getActivoById(activoId)?.modelo }}
@@ -507,7 +517,6 @@
                       </div>
                     </div>
 
-                    <!-- QR Code (Centro) -->
                     <div class="label-qr">
                       <img
                         v-if="qrCodes[getActivoById(activoId)?.codigo_inventario]"
@@ -520,7 +529,6 @@
                       </div>
                     </div>
 
-                    <!-- Código Vertical (Derecha del QR) -->
                     <div class="label-codigo-vertical">
                       <span class="codigo-vertical-text">
                         {{ getActivoById(activoId)?.codigo_inventario }}
@@ -538,19 +546,6 @@
 </template>
 
 <script setup>
-/**
- * ============================================================================
- * SCANNER VIEW - STATE MACHINE IMPLEMENTATION
- * ============================================================================
- *
- * Implementa un patrón de State Machine con 3 estados:
- * - SCANNING: Interfaz de captura
- * - VIEW_ASSET: Detalle de activo
- * - VIEW_LOCATION: Inventario de ubicación
- *
- * Sin navegación entre rutas para mejor UX móvil.
- */
-
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -558,38 +553,22 @@ import apiClient from '@/services/api'
 import QRCode from 'qrcode'
 import QRScanner from '@/components/QRScanner.vue'
 
-// ============================================================================
-// COMPOSABLES
-// ============================================================================
-
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-// ============================================================================
-// STATE MACHINE - ESTADOS
-// ============================================================================
+// State Machine
+const uiState = ref('SCANNING')
 
-const uiState = ref('SCANNING') // 'SCANNING' | 'VIEW_ASSET' | 'VIEW_LOCATION'
-
-// ============================================================================
-// STATE - SCANNING
-// ============================================================================
-
+// Scanning State
 const manualCode = ref('')
 const ultimosMovimientos = ref([])
 const loadingMovimientos = ref(false)
 
-// ============================================================================
-// STATE - VIEW_ASSET
-// ============================================================================
-
+// Asset State
 const currentAsset = ref(null)
 
-// ============================================================================
-// STATE - VIEW_LOCATION
-// ============================================================================
-
+// Location State
 const currentLocation = ref(null)
 const activosDeUbicacion = ref([])
 const locationTab = ref('inventario')
@@ -601,26 +580,19 @@ const filtroInventario = ref({
   tipo: null
 })
 
-// ============================================================================
-// STATE - GENERAL
-// ============================================================================
-
+// General
 const showError = ref(false)
 const errorMessage = ref('')
+const snackbarColor = ref('error')
+const snackbarIcon = ref('mdi-alert-circle')
 const dialogImpresion = ref(false)
 
-// ============================================================================
-// STATE - MODAL DE IMPRESIÓN
-// ============================================================================
-
+// Impresión
 const activosSeleccionados = ref([])
 const seleccionarTodos = ref(false)
-const qrCodes = ref({}) // { 'A-001': 'data:image/png;base64,...', ... }
+const qrCodes = ref({})
 
-// ============================================================================
-// COMPUTED - TABLA INVENTARIO
-// ============================================================================
-
+// Computed
 const headersInventario = computed(() => [
   { title: 'Activo', key: 'nombre', sortable: true },
   { title: 'Código', key: 'codigo_inventario', sortable: true },
@@ -647,10 +619,7 @@ const activosFiltrados = computed(() => {
   return resultado
 })
 
-// ============================================================================
-// MÉTODOS - STATE MACHINE TRANSITIONS
-// ============================================================================
-
+// State Machine Transitions
 function resetToScanning() {
   uiState.value = 'SCANNING'
   currentAsset.value = null
@@ -661,7 +630,6 @@ function resetToScanning() {
 
 async function transitionToAsset(code) {
   try {
-    // Buscar activo por código
     const response = await apiClient.get('/api/activos/', {
       params: { search: code }
     })
@@ -683,7 +651,6 @@ async function transitionToAsset(code) {
 
 async function transitionToLocation(code) {
   try {
-    // Buscar ubicación por código QR
     const response = await apiClient.get('/api/ubicaciones/', {
       params: { search: code }
     })
@@ -696,10 +663,7 @@ async function transitionToLocation(code) {
     }
 
     currentLocation.value = ubicaciones[0]
-
-    // Cargar activos de la ubicación
     await loadActivosDeUbicacion(currentLocation.value.id)
-
     uiState.value = 'VIEW_LOCATION'
   } catch (error) {
     console.error('Error al cargar ubicación:', error)
@@ -707,36 +671,21 @@ async function transitionToLocation(code) {
   }
 }
 
-// ============================================================================
-// MÉTODOS - SCANNING STATE
-// ============================================================================
-
-/**
- * Maneja el escaneo exitoso del QR Scanner
- * @param {Object} result - { decodedText, decodedResult }
- */
+// Scanning Methods
 function handleQRScanSuccess({ decodedText }) {
-  console.log('📸 QR Escaneado:', decodedText)
-
   const code = decodedText.trim().toUpperCase()
 
-  // Evaluar prefijo según formato del backend
   if (code.startsWith('INV-')) {
     transitionToAsset(code)
   } else if (code.startsWith('LOC-')) {
     transitionToLocation(code)
   } else {
-    showErrorMessage('Código QR inválido. Debe comenzar con INV- (Activo) o LOC- (Ubicación)')
+    showErrorMessage('Código QR inválido')
   }
 }
 
-/**
- * Maneja errores del QR Scanner
- * @param {Object} error - { error, details }
- */
 function handleQRScanError({ error, details }) {
-  console.error('❌ Error en escáner:', error, details)
-  // No mostramos error al usuario porque puede reintentar desde el componente
+  console.error('Error en escáner:', error, details)
 }
 
 function handleManualSubmit() {
@@ -747,13 +696,12 @@ function handleManualSubmit() {
     return
   }
 
-  // Evaluar prefijo según formato del backend
   if (code.startsWith('INV-')) {
     transitionToAsset(code)
   } else if (code.startsWith('LOC-')) {
     transitionToLocation(code)
   } else {
-    showErrorMessage('Código inválido. Debe comenzar con INV- (Activo) o LOC- (Ubicación)')
+    showErrorMessage('Código inválido')
   }
 }
 
@@ -776,13 +724,9 @@ async function fetchUltimosMovimientos() {
   }
 }
 
-// ============================================================================
-// MÉTODOS - VIEW_ASSET STATE
-// ============================================================================
-
+// Asset Methods
 function generarMovimiento() {
   if (!currentAsset.value) return
-
   router.push({
     name: 'confirm-asset',
     params: { id: currentAsset.value.id }
@@ -791,38 +735,31 @@ function generarMovimiento() {
 
 function actualizarActivo() {
   if (!currentAsset.value) return
-
   router.push({
-    name: 'technician-edit-search',
+    name: 'technician-edit-activo',
     query: { codigo: currentAsset.value.codigo_inventario }
   })
 }
 
 function verHistorial() {
   if (!currentAsset.value) return
-
   router.push({
     name: 'technician-history',
     query: { activo: currentAsset.value.id }
   })
 }
 
-// ============================================================================
-// MÉTODOS - VIEW_LOCATION STATE
-// ============================================================================
-
+// Location Methods
 async function loadActivosDeUbicacion(ubicacionId) {
   loadingActivos.value = true
   try {
     const response = await apiClient.get('/api/activos/', {
-      params: {
-        ubicacion_actual: ubicacionId
-      }
+      params: { ubicacion_actual: ubicacionId }
     })
 
     activosDeUbicacion.value = response.data.results || response.data
   } catch (error) {
-    console.error('Error al cargar activos de ubicación:', error)
+    console.error('Error al cargar activos:', error)
     showErrorMessage('Error al cargar los activos de la ubicación')
   } finally {
     loadingActivos.value = false
@@ -834,72 +771,36 @@ async function fetchTiposEquipo() {
     const response = await apiClient.get('/api/tipos-equipo/')
     tiposEquipo.value = response.data.results || response.data
   } catch (error) {
-    console.error('Error al cargar tipos de equipo:', error)
+    console.error('Error al cargar tipos:', error)
   }
 }
 
 function handleActivoClick(event, { item }) {
-  // Flujo circular: desde ubicación → activo
   currentAsset.value = item
   uiState.value = 'VIEW_ASSET'
 }
 
-/**
- * Abre el modal de impresión y genera los QR codes.
- * Inicializa la selección con TODOS los activos de la ubicación actual.
- */
+// Print Methods
 async function abrirModalImpresion() {
-  // Resetear selección
   activosSeleccionados.value = []
-  seleccionarTodos.value = false
   qrCodes.value = {}
-
-  // Abrir modal
   dialogImpresion.value = true
-
-  // Generar QR codes para todos los activos de la ubicación
   await generarQRCodes()
-
-  // Inicializar con todos los activos seleccionados
   activosSeleccionados.value = activosDeUbicacion.value.map(a => a.id)
-  seleccionarTodos.value = true
 }
 
-/**
- * Cierra el modal de impresión y limpia el estado.
- */
 function cerrarModalImpresion() {
   dialogImpresion.value = false
   activosSeleccionados.value = []
-  seleccionarTodos.value = false
   qrCodes.value = {}
 }
 
-/**
- * Selecciona todos los activos de la ubicación.
- */
 function seleccionarTodosActivos() {
   activosSeleccionados.value = activosDeUbicacion.value.map(a => a.id)
-  seleccionarTodos.value = true
 }
 
-/**
- * Deselecciona todos los activos.
- */
 function deseleccionarTodosActivos() {
   activosSeleccionados.value = []
-  seleccionarTodos.value = false
-}
-
-/**
- * Toggle de selección de todos los activos (legacy - mantener por compatibilidad).
- */
-function toggleSeleccionarTodos() {
-  if (seleccionarTodos.value) {
-    seleccionarTodosActivos()
-  } else {
-    deseleccionarTodosActivos()
-  }
 }
 
 function getActivoById(id) {
@@ -907,59 +808,49 @@ function getActivoById(id) {
 }
 
 async function generarQRCodes() {
-  // Generar QR codes para todos los activos
   for (const activo of activosDeUbicacion.value) {
     try {
       const qrDataUrl = await QRCode.toDataURL(activo.codigo_inventario, {
         width: 200,
         margin: 1,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
+        color: { dark: '#000000', light: '#FFFFFF' }
       })
       qrCodes.value[activo.codigo_inventario] = qrDataUrl
     } catch (error) {
-      console.error(`Error generando QR para ${activo.codigo_inventario}:`, error)
+      console.error(`Error generando QR:`, error)
     }
   }
 }
 
 function imprimirEtiquetas() {
   if (activosSeleccionados.value.length === 0) {
-    showErrorMessage('Debes seleccionar al menos un activo para imprimir')
+    showErrorMessage('Selecciona al menos un activo')
     return
   }
-
-  // Ejecutar impresión
   window.print()
 }
 
-// ============================================================================
-// MÉTODOS - UTILIDADES
-// ============================================================================
-
+// Utilities
 function showErrorMessage(message) {
   errorMessage.value = message
+  snackbarColor.value = 'error'
+  snackbarIcon.value = 'mdi-alert-circle'
   showError.value = true
 }
 
 function formatTimeAgo(fecha) {
   if (!fecha) return ''
-
   const ahora = new Date()
-  const fechaMovimiento = new Date(fecha)
-  const diffMs = ahora - fechaMovimiento
-  const diffMinutos = Math.floor(diffMs / 60000)
+  const fechaMov = new Date(fecha)
+  const diffMs = ahora - fechaMov
+  const diffMin = Math.floor(diffMs / 60000)
 
-  if (diffMinutos < 1) return 'Hace un momento'
-  if (diffMinutos < 60) return `Hace ${diffMinutos} min`
-
-  const diffHoras = Math.floor(diffMinutos / 60)
-  if (diffHoras < 24) return `Hace ${diffHoras} h`
-
+  if (diffMin < 1) return 'Ahora'
+  if (diffMin < 60) return `${diffMin}m`
+  const diffHoras = Math.floor(diffMin / 60)
+  if (diffHoras < 24) return `${diffHoras}h`
   const diffDias = Math.floor(diffHoras / 24)
-  return `Hace ${diffDias} día${diffDias > 1 ? 's' : ''}`
+  return `${diffDias}d`
 }
 
 function getMovementColor(tipo) {
@@ -995,138 +886,292 @@ function getEstadoColor(estado) {
   return colores[estado] || 'info'
 }
 
-// ============================================================================
-// WATCHERS
-// ============================================================================
-
-// Sincronizar checkbox "Seleccionar Todos" con la selección real
-watch(activosSeleccionados, (newVal) => {
-  if (newVal.length === activosDeUbicacion.value.length && activosDeUbicacion.value.length > 0) {
-    seleccionarTodos.value = true
-  } else {
-    seleccionarTodos.value = false
-  }
-})
-
-// ============================================================================
-// LIFECYCLE HOOKS
-// ============================================================================
-
+// Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    fetchUltimosMovimientos(),
-    fetchTiposEquipo()
-  ])
+  await Promise.all([fetchUltimosMovimientos(), fetchTiposEquipo()])
 
-  // Procesar query params si vienen de QRScannerDemoView
   const ubicacionCode = route.query.ubicacion
   const activoCode = route.query.activo
 
   if (ubicacionCode) {
-    console.log('📍 Query param ubicacion detectado:', ubicacionCode)
     await transitionToLocation(ubicacionCode)
   } else if (activoCode) {
-    console.log('📦 Query param activo detectado:', activoCode)
     await transitionToAsset(activoCode)
   }
 })
+
 </script>
 
 <style scoped>
 /* ============================================================================
-   CONTENEDOR PRINCIPAL
+   VARIABLES Y CONFIGURACIÓN BASE
    ============================================================================ */
-
 .scanner-view {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem;
   min-height: calc(100vh - 112px);
   background: #f5f7fa;
-  padding: 1rem;
-  padding-bottom: 80px; /* Espacio para bottom navigation */
+  padding-bottom: 80px;
 }
 
 /* ============================================================================
-   ESTADO: SCANNING
+   GLASSMORPHISM CARDS
    ============================================================================ */
+.glass-card {
+  background: white !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
 
-.scanning-state {
-  max-width: 600px;
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* ============================================================================
+   HERO SECTION
+   ============================================================================ */
+.hero-section {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  border-radius: 16px;
+  padding: 48px 32px;
+  margin-bottom: 24px;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(25, 118, 210, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  color: white;
+}
+
+.hero-content h1,
+.hero-content p {
+  color: white !important;
+}
+
+/* ============================================================================
+   SCANNER CARD
+   ============================================================================ */
+.scanner-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+/* ============================================================================
+   MOVEMENT ITEMS
+   ============================================================================ */
+.movement-item {
+  padding: 16px 24px !important;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  border-radius: 8px;
+}
+
+.movement-item:hover {
+  background: rgba(25, 118, 210, 0.04);
+}
+
+.movement-item.border-t {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.movement-avatar {
+  transition: transform 0.2s ease;
+}
+
+.movement-item:hover .movement-avatar {
+  transform: scale(1.05);
+}
+
+/* ============================================================================
+   ASSET CARD
+   ============================================================================ */
+.asset-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.asset-header {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.asset-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.asset-header-content {
+  position: relative;
+  z-index: 1;
+  color: white;
+}
+
+.asset-header-content h2,
+.asset-header-content div {
+  color: white !important;
+}
+
+.info-block {
+  padding: 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.info-block:hover {
+  background: #f5f7fa;
+}
+
+/* ============================================================================
+   ACTION CARDS
+   ============================================================================ */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.action-card {
+  background: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px !important;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  height: 100%;
+}
+
+.action-card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(25, 118, 210, 0.3);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.action-card:active {
+  transform: translateY(-4px);
+}
+
+.action-icon-wrapper {
+  width: 64px;
+  height: 64px;
   margin: 0 auto;
+  border-radius: 12px;
+  background: #f5f7fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.action-card:hover .action-icon-wrapper {
+  transform: scale(1.1);
+  background: rgba(25, 118, 210, 0.08);
 }
 
 /* ============================================================================
-   ESTADO: VIEW_ASSET
+   LOCATION HEADER
    ============================================================================ */
-
-.view-asset-state {
-  max-width: 800px;
-  margin: 0 auto;
+.location-header {
+  border-radius: 12px !important;
+  background: white !important;
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 /* ============================================================================
-   ESTADO: VIEW_LOCATION
+   ASSET LIST ITEMS
    ============================================================================ */
+.asset-list-item {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  height: 100%;
+}
 
-.view-location-state {
-  max-width: 1200px;
-  margin: 0 auto;
+.asset-list-item:hover {
+  transform: translateY(-4px);
+  border-color: rgba(25, 118, 210, 0.3);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+.asset-list-item:active {
+  transform: translateY(-2px);
 }
 
 /* ============================================================================
-   TABLA MÓVIL - DISEÑO DE 2 LÍNEAS
+   PRINT STYLES
    ============================================================================ */
-
-.mobile-row {
-  width: 100%;
+.preview-section {
+  margin-top: 32px;
+  padding: 24px;
+  background: #f5f7fa;
+  border-radius: 12px;
 }
-
-/* ============================================================================
-   MODAL DE IMPRESIÓN - SECCIÓN DE SELECCIÓN
-   ============================================================================ */
-
-.selection-section {
-  /* Estilos para la sección de selección */
-}
-
-.activos-list {
-  /* Estilos para la lista de activos */
-}
-
-/* ============================================================================
-   MODAL DE IMPRESIÓN - ÁREA DE IMPRESIÓN
-   ============================================================================ */
 
 .print-area {
-  background: #ffffff;
-  padding: 1rem;
-  border: 2px dashed #ccc;
+  background: white;
+  padding: 20mm;
   border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .labels-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 1rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10mm;
 }
 
 .label-item {
-  border: 1px dashed black;
-  padding: 0.75rem;
-  background: #ffffff;
+  width: 90mm;
+  height: 50mm;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   page-break-inside: avoid;
-  break-inside: avoid;
-  min-height: 150px;
-  display: flex;
-  align-items: center;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.label-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: scale(1.02);
 }
 
 .label-content {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  width: 100%;
   height: 100%;
+  padding: 5mm;
+  gap: 3mm;
+  position: relative;
 }
 
 .label-nombre {
@@ -1134,228 +1179,185 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-width: 0; /* Permite que el texto se trunque si es necesario */
+  padding-right: 2mm;
 }
 
 .nombre-text {
-  font-size: 1rem;
+  font-size: 14pt;
   font-weight: bold;
-  line-height: 1.3;
-  margin-bottom: 0.25rem;
-  word-wrap: break-word;
+  line-height: 1.2;
+  color: #1a1a1a;
+  margin-bottom: 2mm;
 }
 
 .tipo-text {
-  font-size: 0.8rem;
+  font-size: 10pt;
   color: #666;
-  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .label-qr {
-  flex-shrink: 0;
+  width: 35mm;
+  height: 35mm;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .qr-image {
-  width: 100px;
-  height: 100px;
-  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .qr-placeholder {
-  width: 100px;
-  height: 100px;
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #f5f5f5;
-  border: 1px dashed #ccc;
 }
 
 .label-codigo-vertical {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  transform: rotate(180deg);
-  padding: 0 0.5rem;
-  height: 100px;
+  position: absolute;
+  right: 2mm;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+  transform-origin: center;
+  white-space: nowrap;
 }
 
 .codigo-vertical-text {
-  font-size: 0.75rem;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  white-space: nowrap;
-  color: #000;
-}
-
-/* ============================================================================
-   ESTILOS DE IMPRESIÓN - @media print (PIXEL PERFECT)
-   ============================================================================ */
-
-@media print {
-  /* ========================================================================
-     RESET: Ocultar todo el body excepto el contenedor de etiquetas
-     ======================================================================== */
-  body {
-    visibility: hidden;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* Hacer visible solo el área de impresión */
-  #print-area,
-  #print-area * {
-    visibility: visible;
-  }
-
-  /* Posicionar el área de impresión en la esquina superior izquierda */
-  #print-area {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    background: white;
-    padding: 1cm;
-    margin: 0;
-    border: none;
-    border-radius: 0;
-  }
-
-  /* ========================================================================
-     GRID LAYOUT: 3 columnas con gap de 10px
-     ======================================================================== */
-  .labels-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    padding: 0;
-    margin: 0;
-  }
-
-  /* ========================================================================
-     TARJETA DE ETIQUETA (Label Card)
-     ======================================================================== */
-  .label-item {
-    border: 1px dashed black;
-    padding: 0.75rem;
-    background: white;
-    page-break-inside: avoid;
-    break-inside: avoid;
-    min-height: 150px;
-    height: 150px;
-    display: flex;
-    align-items: center;
-  }
-
-  .label-content {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    width: 100%;
-    height: 100%;
-  }
-
-  /* ========================================================================
-     TIPOGRAFÍA Y ORIENTACIÓN
-     ======================================================================== */
-
-  /* Izquierda: Nombre del Activo */
-  .label-nombre {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
-  }
-
-  .nombre-text {
-    font-size: 11pt;
-    font-weight: bold;
-    line-height: 1.3;
-    margin-bottom: 0.25rem;
-    color: black;
-  }
-
-  .tipo-text {
-    font-size: 9pt;
-    color: #333;
-    line-height: 1.2;
-  }
-
-  /* Centro: QR Code */
-  .label-qr {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .qr-image {
-    width: 100px;
-    height: 100px;
-    display: block;
-  }
-
-  .qr-placeholder {
-    display: none; /* Ocultar placeholders en impresión */
-  }
-
-  /* Derecha: Texto Vertical (Código Inventario) */
-  .label-codigo-vertical {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    transform: rotate(180deg);
-    padding: 0 0.5rem;
-    height: 100px;
-  }
-
-  .codigo-vertical-text {
-    font-size: 9pt;
-    font-weight: bold;
-    letter-spacing: 0.1em;
-    white-space: nowrap;
-    color: black;
-  }
-
-  /* ========================================================================
-     CONFIGURACIÓN DE PÁGINA
-     ======================================================================== */
-  @page {
-    margin: 1cm;
-    size: A4;
-  }
+  font-size: 8pt;
+  font-weight: 600;
+  color: #666;
+  letter-spacing: 1px;
 }
 
 /* ============================================================================
    RESPONSIVE
    ============================================================================ */
-
 @media (max-width: 600px) {
   .scanner-view {
-    padding: 0.5rem;
+    padding: 0.75rem;
   }
 
-  .labels-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .hero-section {
+    padding: 32px 24px;
+    border-radius: 12px;
   }
-}
 
-@media (max-width: 400px) {
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+
   .labels-grid {
     grid-template-columns: 1fr;
   }
+
+  .glass-card,
+  .asset-card,
+  .location-header {
+    border-radius: 8px !important;
+  }
+}
+
+@media (min-width: 960px) {
+  .scanner-view {
+    padding: 1.5rem;
+  }
+}
+
+/* ============================================================================
+   PRINT MEDIA QUERY
+   ============================================================================ */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  .scanner-view {
+    background: white;
+    padding: 0;
+  }
+
+  .v-app-bar,
+  .v-btn,
+  .preview-section > h3,
+  .v-alert {
+    display: none !important;
+  }
+
+  .print-area {
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .labels-grid {
+    gap: 5mm;
+  }
+
+  .label-item {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+
+  .label-item:hover {
+    transform: none;
+  }
+}
+
+/* ============================================================================
+   ANIMATIONS
+   ============================================================================ */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scanning-state > *,
+.view-asset-state > *,
+.view-location-state > * {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.movement-item,
+.asset-list-item,
+.action-card {
+  animation: fadeIn 0.3s ease-out backwards;
+}
+
+.movement-item:nth-child(1) { animation-delay: 0.05s; }
+.movement-item:nth-child(2) { animation-delay: 0.1s; }
+.movement-item:nth-child(3) { animation-delay: 0.15s; }
+.movement-item:nth-child(4) { animation-delay: 0.2s; }
+.movement-item:nth-child(5) { animation-delay: 0.25s; }
+
+/* ============================================================================
+   UTILITY CLASSES
+   ============================================================================ */
+.gap-2 {
+  gap: 8px;
+}
+
+.w-100 {
+  width: 100%;
+}
+
+.opacity-90 {
+  opacity: 0.9;
 }
 </style>
-

@@ -4,7 +4,7 @@
          HEADER CON TÍTULO Y BOTÓN NUEVO
          ==================================================================== -->
     <div class="header-section">
-      <h1 class="entity-title">Gestión Tipo de Equipoes</h1>
+      <h1 class="entity-title">Gestión Tipo de Equipos</h1>
       <v-btn
         color="blue"
         size="large"
@@ -42,7 +42,7 @@
          ==================================================================== -->
     <div v-if="loading" class="loading-container">
       <v-progress-circular indeterminate color="primary"></v-progress-circular>
-      <p class="mt-3">Cargando Tipo de Equipoes...</p>
+      <p class="mt-3">Cargando Tipo de Equipos...</p>
     </div>
 
     <!-- ====================================================================
