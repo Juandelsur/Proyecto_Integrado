@@ -176,107 +176,59 @@ export const useAuthStore = defineStore('auth', () => {
   
   /**
    * Login: Autentica al usuario y guarda el token
-   * 
-   * VERSIÓN SIMULADA PARA DESARROLLO (FASE 3 - Refactorización)
-   * 
-   * Usuarios de prueba:
-   * - admin / admin123 -> Rol: Administrador
-   * - tec / tec123 -> Rol: Técnico
-   * - jefe / jefe123 -> Rol: Jefe de Departamento
+   * ✅ VERSIÓN REAL - Conecta con Backend en Render
    */
   async function login(username, password) {
     try {
+      console.log('🔐 Iniciando login con backend en Render...')
+      console.log('📡 Usuario:', username)
+
       // ========================================================================
-      // LOGIN SIMULADO (Para desarrollo sin backend)
+      // LOGIN REAL - Llamada al Backend en Render
       // ========================================================================
-      
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Validar credenciales simuladas
-      let mockUser = null
-      
-      if (username === 'admin' && password === 'admin123') {
-        mockUser = {
-          id: 1,
-          username: 'admin',
-          email: 'admin@hospital.com',
-          rol: {
-            id: 1,
-            nombre_rol: 'Administrador'
-          }
-        }
-      } else if (username === 'tec' && password === 'tec123') {
-        mockUser = {
-          id: 2,
-          username: 'tec',
-          email: 'tecnico@hospital.com',
-          rol: {
-            id: 2,
-            nombre_rol: 'Técnico'
-          }
-        }
-      } else if (username === 'jefe' && password === 'jefe123') {
-        mockUser = {
-          id: 3,
-          username: 'jefe',
-          email: 'jefe@hospital.com',
-          rol: {
-            id: 3,
-            nombre_rol: 'Jefe de Departamento'
-          }
-        }
-      } else {
-        return {
-          success: false,
-          message: 'Usuario o contraseña incorrectos'
-        }
-      }
-      
-      // Generar tokens simulados
-      const mockAccessToken = `mock_access_${mockUser.username}_${Date.now()}`
-      const mockRefreshToken = `mock_refresh_${mockUser.username}_${Date.now()}`
-      
-      // Guardar tokens
-      token.value = mockAccessToken
-      refreshToken.value = mockRefreshToken
-      localStorage.setItem('access_token', mockAccessToken)
-      localStorage.setItem('refresh_token', mockRefreshToken)
-      
-      // Guardar usuario
-      user.value = mockUser
-      localStorage.setItem('user', JSON.stringify(mockUser))
-      
-      return { success: true }
-      
-      // ========================================================================
-      // LOGIN REAL (Descomentar cuando el backend esté listo)
-      // ========================================================================
-      /*
       const response = await apiClient.post('/api/auth/token/', {
         username,
         password
       })
 
+      console.log('✅ Respuesta del backend recibida')
+
       const { access, refresh } = response.data
-      
-      // Guardar tokens
+
+      // ✅ CABLE 1: Guardar tokens en state
       token.value = access
       refreshToken.value = refresh
+
+      // ✅ CABLE 2: Guardar tokens en localStorage (persistencia)
       localStorage.setItem('access_token', access)
       localStorage.setItem('refresh_token', refresh)
-      
-      // Obtener información del usuario
+
+      console.log('✅ Tokens guardados en localStorage')
+
+      // ✅ CABLE 3: Obtener información del usuario desde el backend
       await fetchUserInfo()
-      
+
+      console.log('✅ Usuario autenticado:', user.value)
+      console.log('✅ Rol:', userRole.value)
+      console.log('✅ isAuthenticated:', isAuthenticated.value)
+
       return { success: true }
-      */
-      
+
     } catch (error) {
-      console.error('Error en login:', error)
-      return { 
-        success: false, 
-        message: error.response?.data?.detail || 'Error al iniciar sesión' 
+      console.error('❌ Error en login:', error)
+      console.error('❌ Detalles del error:', error.response?.data)
+
+      // Limpiar cualquier dato residual
+      token.value = null
+      refreshToken.value = null
+      user.value = null
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al iniciar sesión. Verifica tus credenciales.'
       }
     }
   }

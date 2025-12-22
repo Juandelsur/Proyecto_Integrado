@@ -187,13 +187,17 @@ router.beforeEach((to, from, next) => {
   // Actualizar el título de la página
   document.title = to.meta.title ? `${to.meta.title} - SCA Hospital` : 'SCA Hospital'
 
-  // Obtener el store de autenticación
+  // ✅ CABLE REPARADO: Obtener el store de autenticación
   const authStore = useAuthStore()
+
+  console.log('🔍 Router Guard - Navegando a:', to.path)
+  console.log('🔍 isAuthenticated:', authStore.isAuthenticated)
+  console.log('🔍 userRole:', authStore.userRole)
 
   // =========================================================================
   // 1. VERIFICAR SI LA RUTA REQUIERE AUTENTICACIÓN
   // =========================================================================
-  
+
   const requiresAuth = to.meta.requiresAuth
 
   if (requiresAuth) {
@@ -210,7 +214,7 @@ router.beforeEach((to, from, next) => {
     // ========================================================================
     // 2. VERIFICAR ROLES (RBAC - Role-Based Access Control)
     // ========================================================================
-    
+
     const requiredRole = to.meta.requiredRole
 
     if (requiredRole) {
@@ -220,7 +224,7 @@ router.beforeEach((to, from, next) => {
       if (userRole !== requiredRole) {
         // No tiene el rol correcto -> Denegar acceso
         console.warn(`⛔ Acceso denegado: Se requiere rol "${requiredRole}", pero el usuario tiene rol "${userRole}"`)
-        
+
         // Redirigir al panel correcto según su rol
         if (userRole === 'Administrador') {
           return next('/admin')
@@ -238,10 +242,12 @@ router.beforeEach((to, from, next) => {
   // =========================================================================
   // 3. SI ESTÁ AUTENTICADO Y TRATA DE IR AL LOGIN, REDIRIGIR A SU PANEL
   // =========================================================================
-  
+
   if (to.path === '/login' && authStore.isAuthenticated) {
     const userRole = authStore.userRole
-    
+
+    console.log('✅ Usuario ya autenticado, redirigiendo a su panel...')
+
     if (userRole === 'Administrador') {
       return next('/admin')
     } else if (userRole === 'Técnico') {
@@ -254,7 +260,8 @@ router.beforeEach((to, from, next) => {
   // =========================================================================
   // 4. TODO OK - PERMITIR NAVEGACIÓN
   // =========================================================================
-  
+
+  console.log('✅ Navegación permitida a:', to.path)
   next()
 })
 

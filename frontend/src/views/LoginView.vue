@@ -151,11 +151,17 @@ async function handleLogin() {
   errorMessage.value = ''
 
   try {
+    // ✅ CABLE 1: Llamar al store para hacer login
     const result = await authStore.login(username.value, password.value)
 
     if (result.success) {
-      // Redirigir según el rol
+      // ✅ CABLE 2: Esperar a que el store se actualice completamente
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // ✅ CABLE 3: Redirigir según el rol (rutas corregidas según router actual)
       const role = authStore.userRole
+
+      console.log('✅ Login exitoso. Rol:', role)
 
       if (role === 'Administrador') {
         router.push('/admin')
@@ -164,13 +170,14 @@ async function handleLogin() {
       } else if (role === 'Jefe de Departamento') {
         router.push('/jefe')
       } else {
-        router.push('/')
+        console.warn('⚠️ Rol desconocido:', role)
+        router.push('/login')
       }
     } else {
       errorMessage.value = result.message || 'Error al iniciar sesión'
     }
   } catch (error) {
-    console.error('Error en login:', error)
+    console.error('❌ Error en login:', error)
     errorMessage.value = 'Error inesperado al iniciar sesión'
   } finally {
     loading.value = false
