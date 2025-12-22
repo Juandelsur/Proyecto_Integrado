@@ -56,7 +56,7 @@
           class="action-card"
           hover
           ripple
-          @click="navigateTo('/tecnico/activos/editar')"
+          @click="navigateTo('/tecnico/activos/actualizar-activo')"
         >
           <v-card-text class="text-center pa-6">
             <v-avatar size="80" color="warning" class="mb-3">

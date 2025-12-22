@@ -1,30 +1,77 @@
 <template>
   <div class="editar-activo-content">
-    <!-- ====================================================================
-         HEADER CON TÍTULO
-         ==================================================================== -->
-    <div class="header-section">
-      <h1 class="entity-title">Editar Activo</h1>
-      <p v-if="!loading && activo.codigo_inventario" class="subtitle">
-        Código: {{ activo.codigo_inventario }}
-      </p>
-    </div>
 
-    <!-- ====================================================================
-         LOADING STATE
-         ==================================================================== -->
+    <!-- ============================================================
+         BUSCAR ACTIVO
+         ============================================================ -->
+    <v-card class="form-card mb-6" elevation="2">
+      <v-card-text class="pa-6">
+        <h2 class="entity-title mb-4">Buscar Activo</h2>
+
+        <v-row dense>
+          <v-col cols="8">
+            <v-text-field
+              v-model="codigoBusqueda"
+              label="Código de Inventario"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="mdi-barcode-scan"
+              hint="Ingrese o escanee el código"
+              persistent-hint
+              @keyup.enter="buscarActivo"
+            />
+          </v-col>
+
+          <v-col cols="2" class="d-flex align-center">
+            <v-btn
+              color="primary"
+              variant="tonal"
+              block
+              height="56"
+              icon="mdi-qrcode-scan"
+              @click="abrirCamara"
+            />
+          </v-col>
+
+          <v-col cols="2" class="d-flex align-center">
+            <v-btn
+              color="primary"
+              block
+              height="56"
+              prepend-icon="mdi-magnify"
+              :loading="loading"
+              @click="buscarActivo"
+            >
+              Buscar
+            </v-btn>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
+
+    <!-- ============================================================
+         LOADING
+         ============================================================ -->
     <div v-if="loading" class="loading-container">
-      <v-progress-circular indeterminate color="primary"></v-progress-circular>
-      <p class="mt-3">Cargando datos...</p>
+      <v-progress-circular indeterminate color="primary" />
+      <p class="mt-3">Buscando activo...</p>
     </div>
 
-    <!-- ====================================================================
-         FORMULARIO PRINCIPAL
-         ==================================================================== -->
-    <v-card v-else class="form-card" elevation="2">
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
+    <div v-if="activo.id" class="header-section">
+      <h1 class="entity-title">Editar Activo</h1>
+      <p class="subtitle">Código: {{ activo.codigo_inventario }}</p>
+    </div>
+
+    <!-- ============================================================
+         FORMULARIO
+         ============================================================ -->
+    <v-card v-if="activo.id" class="form-card" elevation="2">
       <v-card-text class="pa-6">
         <v-form ref="formRef">
-          <!-- Código de inventario (solo lectura) -->
+
           <v-text-field
             v-model="activo.codigo_inventario"
             label="Código de Inventario"
@@ -32,11 +79,10 @@
             density="comfortable"
             prepend-inner-icon="mdi-barcode"
             readonly
-            class="mb-4"
             bg-color="grey-lighten-4"
-          ></v-text-field>
+            class="mb-4"
+          />
 
-          <!-- Tipo de Equipo -->
           <v-select
             v-model="formulario.tipo"
             :items="tiposEquipo"
@@ -48,9 +94,8 @@
             prepend-inner-icon="mdi-devices"
             :rules="[v => !!v || 'Campo requerido']"
             class="mb-4"
-          ></v-select>
+          />
 
-          <!-- Marca y Modelo -->
           <v-row class="mb-4">
             <v-col cols="12" sm="6">
               <v-text-field
@@ -60,8 +105,9 @@
                 density="comfortable"
                 prepend-inner-icon="mdi-tag"
                 :rules="[v => !!v || 'Campo requerido']"
-              ></v-text-field>
+              />
             </v-col>
+
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model="formulario.modelo"
@@ -70,23 +116,19 @@
                 density="comfortable"
                 prepend-inner-icon="mdi-label"
                 :rules="[v => !!v || 'Campo requerido']"
-              ></v-text-field>
+              />
             </v-col>
           </v-row>
 
-          <!-- Número de Serie -->
           <v-text-field
             v-model="formulario.numero_serie"
             label="Número de Serie"
             variant="outlined"
             density="comfortable"
             prepend-inner-icon="mdi-numeric"
-            hint="Opcional"
-            persistent-hint
             class="mb-4"
-          ></v-text-field>
+          />
 
-          <!-- Estado -->
           <v-select
             v-model="formulario.estado"
             :items="estados"
@@ -98,9 +140,8 @@
             prepend-inner-icon="mdi-state-machine"
             :rules="[v => !!v || 'Campo requerido']"
             class="mb-4"
-          ></v-select>
+          />
 
-          <!-- Ubicación Actual -->
           <v-select
             v-model="formulario.ubicacion_actual"
             :items="ubicaciones"
@@ -112,9 +153,8 @@
             prepend-inner-icon="mdi-map-marker"
             :rules="[v => !!v || 'Campo requerido']"
             class="mb-4"
-          ></v-select>
+          />
 
-          <!-- Notas -->
           <v-textarea
             v-model="formulario.notas"
             label="Notas"
@@ -122,107 +162,78 @@
             density="comfortable"
             rows="4"
             prepend-inner-icon="mdi-note-text"
-            hint="Información adicional sobre el activo"
-            persistent-hint
-          ></v-textarea>
+          />
         </v-form>
       </v-card-text>
 
-      <!-- ====================================================================
-           ACCIONES DEL FORMULARIO
-           ==================================================================== -->
       <v-card-actions class="pa-6 pt-0">
-        <v-btn
-          variant="outlined"
-          size="large"
-          prepend-icon="mdi-arrow-left"
-          @click="volver"
-          :disabled="guardando"
-        >
+        <v-btn variant="outlined" prepend-icon="mdi-arrow-left" @click="volver">
           Volver
         </v-btn>
-        <v-spacer></v-spacer>
+
+        <v-spacer />
+
         <v-btn
           color="primary"
-          size="large"
           prepend-icon="mdi-content-save"
-          @click="guardar"
           :loading="guardando"
+          @click="guardar"
         >
           Guardar Cambios
         </v-btn>
       </v-card-actions>
     </v-card>
 
-    <!-- ====================================================================
-         SNACKBAR NOTIFICACIONES
-         ==================================================================== -->
-    <v-snackbar
-      v-model="snackbar.show"
-      :color="snackbar.color"
-      :timeout="3000"
-      location="top"
-    >
+    <!-- ============================================================
+         DIALOG CÁMARA
+         ============================================================ -->
+    <v-dialog v-model="dialogCamara" max-width="500" persistent>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start>mdi-qrcode-scan</v-icon>
+          Escanear Código
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" @click="dialogCamara = false" />
+        </v-card-title>
+
+        <v-card-text>
+          <QRScanner
+            @scan-success="onScanSuccess"
+            @scan-error="onScanError"
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- ============================================================
+         SNACKBAR
+         ============================================================ -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="3000">
       {{ snackbar.text }}
-      <template v-slot:actions>
-        <v-btn
-          variant="text"
-          @click="snackbar.show = false"
-        >
-          Cerrar
-        </v-btn>
-      </template>
     </v-snackbar>
+
   </div>
 </template>
 
 <script setup>
-/**
- * ============================================================================
- * EDITAR ACTIVO
- * ============================================================================
- *
- * Funcionalidades:
- * - Formulario para editar un activo existente
- * - Carga de datos del activo por ID
- * - Validación de campos requeridos
- * - Actualización de datos del activo
- * - Notificaciones de éxito/error
- * - Navegación de retorno
- */
-
 import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import apiClient from '@/services/api'
-
-// ============================================================================
-// COMPOSABLES
-// ============================================================================
+import QRScanner from '@/components/QRScanner.vue'
 
 const router = useRouter()
-const route = useRoute()
 
-// ============================================================================
-// STATE
-// ============================================================================
-
+const codigoBusqueda = ref('')
 const loading = ref(false)
 const guardando = ref(false)
+const dialogCamara = ref(false)
+const formRef = ref(null)
+
 const tiposEquipo = ref([])
 const estados = ref([])
 const ubicaciones = ref([])
-const formRef = ref(null)
 
-const activo = ref({
-  codigo_inventario: ''
-})
-
-const snackbar = ref({
-  show: false,
-  text: '',
-  color: 'success'
-})
-
+const activo = ref({})
 const formulario = ref({
   tipo: null,
   marca: '',
@@ -233,344 +244,312 @@ const formulario = ref({
   notas: ''
 })
 
-// ============================================================================
-// MÉTODOS - API
-// ============================================================================
+const snackbar = ref({
+  show: false,
+  text: '',
+  color: 'success'
+})
 
-/**
- * Carga los datos del activo a editar
- */
-async function cargarActivo() {
-  // Obtener el identificador de la ruta
-  // Puede venir en params (:id) o en query (?codigo=XXX)
-  const identificador = route.params.id || route.query.codigo
-  
-  console.log('🔍 Parámetros de la ruta:', route.params)
-  console.log('🔍 Query de la ruta:', route.query)
-  console.log('🔍 Identificador recibido:', identificador)
-  console.log('🔍 Ruta completa:', route.path)
-  
-  if (!identificador) {
-    console.error('❌ No se encontró identificador en route.params.id ni route.query.codigo')
-    mostrarNotificacion('Identificador de activo no válido', 'error')
-    volver()
+function mostrarNotificacion(text, color = 'success') {
+  snackbar.value = { show: true, text, color }
+}
+
+/* =======================
+   CARGAS INICIALES
+   ======================= */
+onMounted(async () => {
+  await Promise.all([
+    cargarTiposEquipo(),
+    cargarEstados(),
+    cargarUbicaciones()
+  ])
+})
+
+async function cargarTiposEquipo() {
+  const res = await apiClient.get('/api/tipos-equipo/', { params: { page_size: 1000 } })
+  tiposEquipo.value = res.data.results || res.data
+}
+
+async function cargarEstados() {
+  const res = await apiClient.get('/api/estados-activo/', { params: { page_size: 1000 } })
+  estados.value = res.data.results || res.data
+}
+
+async function cargarUbicaciones() {
+  const res = await apiClient.get('/api/ubicaciones/', { params: { page_size: 1000 } })
+  ubicaciones.value = res.data.results || res.data
+}
+
+/* =======================
+   CÁMARA
+   ======================= */
+function abrirCamara() {
+  dialogCamara.value = true
+}
+
+function onScanSuccess({ decodedText }) {
+  dialogCamara.value = false
+  codigoBusqueda.value = decodedText.trim()
+  buscarActivo()
+}
+
+function onScanError() {
+  mostrarNotificacion('Error al escanear', 'error')
+}
+
+/* =======================
+   BUSCAR ACTIVO
+   ======================= */
+async function buscarActivo() {
+  if (!codigoBusqueda.value.trim()) {
+    mostrarNotificacion('Ingrese un código', 'warning')
     return
   }
 
+  loading.value = true
+
   try {
-    // Primero intentar cargar todos los activos y buscar por código o ID
-    const response = await apiClient.get('/api/activos/', {
-      params: { page_size: 1000 }
+    const res = await apiClient.get('/api/activos/', {
+      params: { codigo_inventario: codigoBusqueda.value.trim() }
     })
-    
-    const activos = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.results || []
-    
-    console.log('📦 Total de activos cargados:', activos.length)
-    
-    // Buscar el activo por ID o por código de inventario
-    const activoEncontrado = activos.find(a => 
-      a.id?.toString() === identificador || 
-      a.codigo_inventario === identificador
-    )
-    
-    console.log('🔎 Activo encontrado:', activoEncontrado)
-    
-    if (!activoEncontrado) {
-      console.error('❌ No se encontró activo con identificador:', identificador)
+
+    const data = res.data.results || res.data
+
+    if (!data.length) {
       mostrarNotificacion('Activo no encontrado', 'error')
-      volver()
+      activo.value = {}
       return
     }
-    
-    activo.value = activoEncontrado
-    
-    // Llenar el formulario con los datos del activo
-    // Usar la misma estructura que el código de referencia
+
+    activo.value = data[0]
+
     formulario.value = {
-      tipo: activoEncontrado.tipo?.id || null,
-      marca: activoEncontrado.marca,
-      modelo: activoEncontrado.modelo,
-      numero_serie: activoEncontrado.numero_serie || '',
-      estado: activoEncontrado.estado?.id || null,
-      ubicacion_actual: activoEncontrado.ubicacion_actual?.id || null,
-      notas: activoEncontrado.notas || ''
+      tipo: activo.value.tipo?.id || null,
+      marca: activo.value.marca,
+      modelo: activo.value.modelo,
+      numero_serie: activo.value.numero_serie || '',
+      estado: activo.value.estado?.id || null,
+      ubicacion_actual: activo.value.ubicacion_actual?.id || null,
+      notas: activo.value.notas || ''
     }
-    
-    console.log('✅ Activo cargado:', activoEncontrado)
-    console.log('📋 Formulario inicializado:', formulario.value)
-    
-  } catch (error) {
-    console.error('Error al cargar el activo:', error)
-    mostrarNotificacion('Error al cargar el activo', 'error')
-    volver()
+
+    mostrarNotificacion('Activo cargado correctamente')
+
+  } catch {
+    mostrarNotificacion('Error al buscar activo', 'error')
+  } finally {
+    loading.value = false
   }
 }
 
-/**
- * Carga los tipos de equipo para el select
- */
-async function cargarTiposEquipo() {
-  try {
-    const response = await apiClient.get('/api/tipos-equipo/', {
-      params: { page_size: 1000 }
-    })
-    tiposEquipo.value = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.results || []
-  } catch (error) {
-    console.error('Error al cargar tipos de equipo:', error)
-    mostrarNotificacion('Error al cargar tipos de equipo', 'error')
-  }
-}
-
-/**
- * Carga los estados para el select
- */
-async function cargarEstados() {
-  try {
-    const response = await apiClient.get('/api/estados-activo/', {
-      params: { page_size: 1000 }
-    })
-    estados.value = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.results || []
-  } catch (error) {
-    console.error('Error al cargar estados:', error)
-    mostrarNotificacion('Error al cargar estados', 'error')
-  }
-}
-
-/**
- * Carga las ubicaciones para el select
- */
-async function cargarUbicaciones() {
-  try {
-    const response = await apiClient.get('/api/ubicaciones/', {
-      params: { page_size: 1000 }
-    })
-    ubicaciones.value = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.results || []
-  } catch (error) {
-    console.error('Error al cargar ubicaciones:', error)
-    mostrarNotificacion('Error al cargar ubicaciones', 'error')
-  }
-}
-
-/**
- * Guarda los cambios del activo
- */
+/* =======================
+   GUARDAR
+   ======================= */
 async function guardar() {
-  // Validar formulario
   const { valid } = await formRef.value.validate()
-  if (!valid) {
-    mostrarNotificacion('Por favor complete todos los campos requeridos', 'warning')
-    return
-  }
+  if (!valid) return
 
   guardando.value = true
 
   try {
-    // Usar el ID del activo cargado, no el parámetro de la ruta
-    const activoId = activo.value.id
-    
-    if (!activoId) {
-      mostrarNotificacion('Error: ID de activo no disponible', 'error')
-      return
-    }
-    
-    // Preparar payload con los nombres correctos que espera el backend
     const payload = {
       tipo_id: formulario.value.tipo,
-      marca: formulario.value.marca?.trim(),
-      modelo: formulario.value.modelo?.trim(),
-      numero_serie: formulario.value.numero_serie?.trim() || null,
+      marca: formulario.value.marca,
+      modelo: formulario.value.modelo,
+      numero_serie: formulario.value.numero_serie || null,
       estado_id: formulario.value.estado,
       ubicacion_actual_id: formulario.value.ubicacion_actual,
-      notas: formulario.value.notas?.trim() || ''
+      notas: formulario.value.notas || ''
     }
 
-    console.log('📤 Enviando payload:', payload)
-    console.log('📍 ID del activo:', activoId)
+    await apiClient.put(`/api/activos/${activo.value.id}/`, payload)
 
-    // Actualizar activo
-    const response = await apiClient.put(`/api/activos/${activoId}/`, payload)
-    
-    console.log('✅ Activo actualizado:', response.data)
-    
-    mostrarNotificacion('Activo actualizado exitosamente', 'success')
-    
-    // Esperar un momento para que el usuario vea la notificación
-    setTimeout(() => {
-      volver()
-    }, 1500)
-    
-  } catch (error) {
-    console.error('❌ Error al guardar:', error)
-    
-    // Mostrar error detallado del servidor
-    if (error.response?.data) {
-      console.error('📥 Detalle del error:', error.response.data)
-      
-      // Crear mensaje de error más descriptivo
-      let mensajeError = 'Error al actualizar el activo'
-      
-      if (typeof error.response.data === 'object') {
-        const errores = []
-        for (const [campo, mensajes] of Object.entries(error.response.data)) {
-          if (Array.isArray(mensajes)) {
-            errores.push(`${campo}: ${mensajes.join(', ')}`)
-          } else {
-            errores.push(`${campo}: ${mensajes}`)
-          }
-        }
-        mensajeError = errores.join(' | ')
-      }
-      
-      mostrarNotificacion(mensajeError, 'error')
-    } else {
-      mostrarNotificacion('Error al actualizar el activo', 'error')
-    }
+    mostrarNotificacion('Activo actualizado exitosamente')
+
+  } catch {
+    mostrarNotificacion('Error al guardar cambios', 'error')
   } finally {
     guardando.value = false
   }
 }
 
-// ============================================================================
-// MÉTODOS - UI
-// ============================================================================
-
-/**
- * Muestra una notificación snackbar
- */
-function mostrarNotificacion(text, color = 'success') {
-  snackbar.value = {
-    show: true,
-    text,
-    color
-  }
-}
-
-/**
- * Vuelve a la página anterior
- */
 function volver() {
   router.back()
 }
-
-// ============================================================================
-// LIFECYCLE HOOKS
-// ============================================================================
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      cargarTiposEquipo(),
-      cargarEstados(),
-      cargarUbicaciones(),
-      cargarActivo()
-    ])
-  } finally {
-    loading.value = false
-  }
-})
-
 </script>
 
 <style scoped>
-/* ============================================================================
+/* ============================================================
    CONTENEDOR PRINCIPAL
-   ============================================================================ */
-
+   ============================================================ */
 .editar-activo-content {
-  min-height: 100vh;
-  background: #f5f7fa;
-  padding: 2rem 1rem;
-  max-width: 800px;
+  max-width: 880px;
   margin: 0 auto;
+  padding: 2.5rem 1.25rem;
+  min-height: 100vh;
+  background: linear-gradient(
+    180deg,
+    #f6f8fb 0%,
+    #eef2f7 100%
+  );
 }
 
-/* ============================================================================
-   HEADER
-   ============================================================================ */
-
-.header-section {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
+/* ============================================================
+   TÍTULOS
+   ============================================================ */
 .entity-title {
-  font-size: 1.75rem;
+  font-size: 1.7rem;
   font-weight: 600;
-  color: #333;
-  margin: 0 0 0.5rem 0;
+  text-align: center;
+  color: #1f2937;
+  letter-spacing: -0.3px;
 }
 
 .subtitle {
+  text-align: center;
   font-size: 0.95rem;
-  color: #666;
-  margin: 0;
+  color: #6b7280;
+  margin-top: 0.25rem;
+  margin-bottom: 1.5rem;
 }
 
-/* ============================================================================
-   CARD DEL FORMULARIO
-   ============================================================================ */
-
+/* ============================================================
+   CARDS
+   ============================================================ */
 .form-card {
-  background: white;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.form-card:hover {
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.08),
+    0 3px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================================
+   BUSCADOR
+   ============================================================ */
+.form-card h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+}
+
+/* Input de búsqueda destacado */
+.v-text-field input {
+  font-size: 0.95rem;
+}
+
+/* ============================================================
+   HEADER ACTIVO
+   ============================================================ */
+.header-section {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #1d4ed8
+  );
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.header-section .entity-title {
+  color: #ffffff;
+  margin-bottom: 0.25rem;
+}
+
+.header-section .subtitle {
+  color: #dbeafe;
+  margin-bottom: 0;
+}
+
+/* ============================================================
+   FORMULARIO
+   ============================================================ */
+.v-field {
   border-radius: 12px;
 }
 
-/* ============================================================================
-   LOADING STATE
-   ============================================================================ */
+/* Campos readonly más suaves */
+.v-field--variant-outlined.v-field--disabled,
+.v-field--variant-outlined.v-field--readonly {
+  background-color: #f9fafb;
+}
 
+/* Textarea */
+.v-textarea textarea {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* ============================================================
+   ACCIONES
+   ============================================================ */
+.v-card-actions {
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Botón primario */
+.v-btn--variant-elevated,
+.v-btn--variant-flat,
+.v-btn--variant-tonal {
+  border-radius: 10px;
+  text-transform: none;
+  font-weight: 500;
+}
+
+/* ============================================================
+   LOADING
+   ============================================================ */
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem 1rem;
-  color: #666;
+  padding: 3rem 1rem;
+  color: #4b5563;
 }
 
-/* ============================================================================
-   RESPONSIVE
-   ============================================================================ */
+/* ============================================================
+   SNACKBAR
+   ============================================================ */
+.v-snackbar {
+  border-radius: 12px;
+}
 
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
 @media (max-width: 600px) {
   .editar-activo-content {
-    padding: 1rem 0.75rem;
+    padding: 1.5rem 0.75rem;
   }
 
   .entity-title {
-    font-size: 1.5rem;
-  }
-
-  .subtitle {
-    font-size: 0.875rem;
+    font-size: 1.45rem;
   }
 
   .form-card {
-    border-radius: 8px;
+    border-radius: 14px;
   }
 
-  .form-card .v-card-text {
-    padding: 1.25rem !important;
-  }
-
-  .form-card .v-card-actions {
-    padding: 1.25rem !important;
-    padding-top: 0 !important;
+  .v-card-actions {
     flex-direction: column-reverse;
     gap: 0.75rem;
   }
 
-  .form-card .v-card-actions .v-btn {
+  .v-card-actions .v-btn {
     width: 100%;
   }
 }
+
 </style>

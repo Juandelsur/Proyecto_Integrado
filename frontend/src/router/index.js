@@ -127,8 +127,8 @@ const router = createRouter({
           }
         },
         {
-          path: 'history',
-          name: 'technician-history',
+          path: 'mihistorial',
+          name: 'tecnico-MiHistorial',
           component: () => import('../views/technician/MiHistorialView.vue'),
           meta: {
             title: 'Mis Movimientos'
@@ -136,10 +136,10 @@ const router = createRouter({
         },
         {
           path: 'imprimir',
-          name: 'technician-print',
-          component: () => import('../views/technician/PrintLabelsView.vue'),
+          name: 'tecnico-imprimir-qr',
+          component: () => import('../views/ImprimirQrView.vue'),
           meta: {
-            title: 'Imprimir Etiquetas'
+            title: 'Imprimir QR - Técnico'
           }
         },
         {
@@ -154,31 +154,33 @@ const router = createRouter({
               }
             },
             {
-              path: 'editar',
+              path: 'editar/:id',
               name: 'technician-edit-activo',
-              component: () => import('../views/technician/activos/EditarActivoView.vue'),
+              component: () => import('../views/technician/activos/EditarActivoAutoView.vue'),
+              props: true,
               meta: {
                 title: 'Editar Activo - Técnico'
+              }
+            },
+            {
+              path: 'actualizar-activo',
+              name: 'tecnico-actualizar-activo',
+              component: () => import('../views/technician/activos/EditarActivoView.vue'),
+              meta: {
+                title: 'Actualizar Activo - Técnico'
               }
             },
           ]
         },
         {
-          path: 'crear',
-          name: 'technician-create',
-          component: () => import('../views/technician/CreateAssetView.vue'),
+          path: 'movimiento-tecnico/:id',
+          name: 'movimiento-tecnico-create',
+          component: () => import('../views/technician/MovimientoTecnicoView.vue'),
+          props: true,
           meta: {
-            title: 'Crear Activo'
+            title: 'Mover Activo - Técnico'
           }
         },
-        {
-          path: 'editar-buscar',
-          name: 'technician-edit-search',
-          component: () => import('../views/technician/EditAssetSearchView.vue'),
-          meta: {
-            title: 'Editar Activos'
-          }
-        }
       ]
     },
     // ========================================================================
@@ -197,6 +199,7 @@ const router = createRouter({
       path: '/confirmar-equipo/:id',
       name: 'confirm-asset',
       component: () => import('../views/technician/MovimientoTecnicoView.vue'),
+      props: true,
       meta: {
         title: 'Confirmar Equipo',
         requiresAuth: true

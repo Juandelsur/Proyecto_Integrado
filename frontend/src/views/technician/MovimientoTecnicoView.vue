@@ -11,48 +11,17 @@
     </v-card>
 
     <!-- ====================================================================
-         SELECCIÓN DE ACTIVO
+         LOADING INICIAL
          ==================================================================== -->
-    <v-card class="mb-4">
-      <v-card-title class="text-h6 font-weight-bold">
-        <v-icon start>mdi-laptop</v-icon>
-        Seleccionar Activo
-      </v-card-title>
-      
-      <v-card-text>
-        <v-autocomplete
-          v-model="activoSeleccionadoId"
-          :items="activos"
-          :item-title="getActivoLabel"
-          item-value="id"
-          label="Buscar activo por código, marca o modelo"
-          variant="outlined"
-          density="comfortable"
-          prepend-inner-icon="mdi-magnify"
-          clearable
-          :loading="loadingActivos"
-          @update:model-value="onActivoChange"
-        >
-          <template v-slot:item="{ props, item }">
-            <v-list-item v-bind="props">
-              <template v-slot:prepend>
-                <v-avatar color="primary" size="small">
-                  <v-icon size="small">mdi-laptop</v-icon>
-                </v-avatar>
-              </template>
-              <template v-slot:subtitle>
-                <span class="text-caption">{{ item.raw.codigo_inventario }}</span>
-              </template>
-            </v-list-item>
-          </template>
-        </v-autocomplete>
-      </v-card-text>
-    </v-card>
+    <div v-if="loadingInicial" class="loading-container">
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+      <p class="mt-3 text-h6">Cargando información del activo...</p>
+    </div>
 
     <!-- ====================================================================
          INFORMACIÓN DEL ACTIVO SELECCIONADO
          ==================================================================== -->
-    <v-card v-if="activoSeleccionado" class="mb-4">
+    <v-card v-else-if="activoSeleccionado" class="mb-4">
       <v-card-title class="text-h6 font-weight-bold bg-blue">
         <v-icon start>mdi-information</v-icon>
         Información del Activo
@@ -173,7 +142,7 @@
             <!-- Ubicación Destino -->
             <v-col cols="12" md="6">
               <v-select
-                v-model="formulario.ubicacion_destino"
+                v-model="formulario.ubicacion_destino_id"
                 :items="ubicaciones"
                 item-title="nombre_ubicacion"
                 item-value="id"
@@ -216,7 +185,7 @@
 
               <v-col cols="12" md="6">
                 <v-select
-                  v-model="formulario.nuevo_estado"
+                  v-model="formulario.nuevo_estado_id"
                   :items="estados"
                   item-title="nombre_estado"
                   item-value="id"
@@ -231,10 +200,10 @@
             </v-row>
           </v-expand-transition>
 
-          <!-- Observaciones -->
+          <!-- Comentarios -->
           <v-textarea
-            v-model="formulario.observaciones"
-            label="Observaciones (opcional)"
+            v-model="formulario.comentarios"
+            label="Comentarios (opcional)"
             variant="outlined"
             density="comfortable"
             rows="3"
@@ -274,14 +243,21 @@
     </v-card>
 
     <!-- ====================================================================
-         EMPTY STATE (Sin activo seleccionado)
+         EMPTY STATE (Error al cargar)
          ==================================================================== -->
-    <v-card v-else class="text-center pa-8">
-      <v-icon size="64" color="grey-lighten-1">mdi-arrow-up</v-icon>
-      <p class="text-h6 mt-4 mb-2">Selecciona un activo para comenzar</p>
-      <p class="text-body-2 text-grey">
-        Usa el buscador superior para encontrar el activo que deseas mover
+    <v-card v-else-if="!loadingInicial" class="text-center pa-8">
+      <v-icon size="64" color="error">mdi-alert-circle</v-icon>
+      <p class="text-h6 mt-4 mb-2">No se pudo cargar el activo</p>
+      <p class="text-body-2 text-grey mb-4">
+        El activo solicitado no existe o hubo un error al cargarlo
       </p>
+      <v-btn
+        variant="outlined"
+        prepend-icon="mdi-arrow-left"
+        @click="volver"
+      >
+        Volver
+      </v-btn>
     </v-card>
 
     <!-- ====================================================================
@@ -323,7 +299,7 @@
                 <v-icon size="small">mdi-map-marker</v-icon>
               </template>
               <v-list-item-title class="text-body-2">
-                <strong>Destino:</strong> {{ getUbicacionNombre(formulario.ubicacion_destino) }}
+                <strong>Destino:</strong> {{ getUbicacionNombre(formulario.ubicacion_destino_id) }}
               </v-list-item-title>
             </v-list-item>
 
@@ -332,7 +308,7 @@
                 <v-icon size="small">mdi-state-machine</v-icon>
               </template>
               <v-list-item-title class="text-body-2">
-                <strong>Nuevo Estado:</strong> {{ getEstadoNombre(formulario.nuevo_estado) }}
+                <strong>Nuevo Estado:</strong> {{ getEstadoNombre(formulario.nuevo_estado_id) }}
               </v-list-item-title>
             </v-list-item>
           </v-list>
@@ -377,18 +353,18 @@
 <script setup>
 /**
  * ============================================================================
- * REGISTRAR MOVIMIENTO DE ACTIVO
+ * REGISTRAR MOVIMIENTO DE ACTIVO - TÉCNICO
  * ============================================================================
  *
+ * Recibe el ID del activo desde la ruta: /confirmar-equipo/:id
  * Permite:
- * - Seleccionar un activo
- * - Ver su información completa
+ * - Ver información completa del activo
  * - Cambiar su ubicación
  * - Cambiar su estado (opcional)
- * - Agregar observaciones
+ * - Agregar comentarios
  */
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import apiClient from '@/services/api'
@@ -401,17 +377,23 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
+// Obtener el ID desde los props (viene de la ruta)
+const props = defineProps({
+  id: {
+    type: String,
+    required: true
+  }
+})
+
 // ============================================================================
 // STATE
 // ============================================================================
 
-const activos = ref([])
 const ubicaciones = ref([])
 const estados = ref([])
-const activoSeleccionadoId = ref(null)
 const activoSeleccionado = ref(null)
 const cambiarEstado = ref(false)
-const loadingActivos = ref(false)
+const loadingInicial = ref(true)
 const guardando = ref(false)
 const showConfirmDialog = ref(false)
 const formRef = ref(null)
@@ -427,9 +409,9 @@ const tiposMovimiento = [
 
 const formulario = ref({
   tipo_movimiento: null,
-  ubicacion_destino: null,
-  nuevo_estado: null,
-  observaciones: ''
+  ubicacion_destino_id: null,
+  nuevo_estado_id: null,
+  comentarios: ''
 })
 
 const snackbar = ref({
@@ -440,58 +422,23 @@ const snackbar = ref({
 })
 
 // ============================================================================
-// COMPUTED
-// ============================================================================
-
-/**
- * ID del usuario actual
- */
-const usuarioActualId = computed(() => {
-  return authStore.user?.id
-})
-
-// ============================================================================
 // MÉTODOS - API
 // ============================================================================
 
 /**
- * Carga todos los activos
+ * Carga un activo específico por ID
  */
-async function cargarActivos() {
-  loadingActivos.value = true
+async function cargarActivo() {
+  loadingInicial.value = true
   try {
-    const response = await apiClient.get('/api/activos/', {
-      params: { page_size: 1000 }
-    })
-    
-    activos.value = Array.isArray(response.data) 
-      ? response.data 
-      : response.data.results || []
-
-    console.log(`✅ Cargados ${activos.value.length} activos`)
-
-  } catch (error) {
-    console.error('Error al cargar activos:', error)
-    mostrarNotificacion('Error al cargar los activos', 'error', 'mdi-alert-circle')
-  } finally {
-    loadingActivos.value = false
-  }
-}
-
-/**
- * Carga un activo específico por ID (desde escaneo QR)
- */
-async function cargarActivoPorId(activoId) {
-  loadingActivos.value = true
-  try {
+    const activoId = parseInt(props.id)
     console.log(`🔍 Cargando activo con ID: ${activoId}`)
     
     const response = await apiClient.get(`/api/activos/${activoId}/`)
     
     activoSeleccionado.value = response.data
-    activoSeleccionadoId.value = activoId
     
-    console.log('✅ Activo cargado desde URL:', activoSeleccionado.value)
+    console.log('✅ Activo cargado:', activoSeleccionado.value)
     
     mostrarNotificacion(
       `Activo cargado: ${activoSeleccionado.value.marca} ${activoSeleccionado.value.modelo}`,
@@ -500,14 +447,15 @@ async function cargarActivoPorId(activoId) {
     )
 
   } catch (error) {
-    console.error('❌ Error al cargar activo por ID:', error)
+    console.error('❌ Error al cargar activo:', error)
     mostrarNotificacion(
-      'No se pudo cargar el activo. Usa el buscador para seleccionarlo.',
+      'No se pudo cargar el activo solicitado',
       'error',
       'mdi-alert-circle'
     )
+    activoSeleccionado.value = null
   } finally {
-    loadingActivos.value = false
+    loadingInicial.value = false
   }
 }
 
@@ -522,8 +470,11 @@ async function cargarUbicaciones() {
     ubicaciones.value = Array.isArray(response.data) 
       ? response.data 
       : response.data.results || []
+    
+    console.log(`✅ Cargadas ${ubicaciones.value.length} ubicaciones`)
   } catch (error) {
     console.error('Error al cargar ubicaciones:', error)
+    mostrarNotificacion('Error al cargar ubicaciones', 'error', 'mdi-alert-circle')
   }
 }
 
@@ -538,8 +489,11 @@ async function cargarEstados() {
     estados.value = Array.isArray(response.data) 
       ? response.data 
       : response.data.results || []
+    
+    console.log(`✅ Cargados ${estados.value.length} estados`)
   } catch (error) {
     console.error('Error al cargar estados:', error)
+    mostrarNotificacion('Error al cargar estados', 'error', 'mdi-alert-circle')
   }
 }
 
@@ -550,44 +504,43 @@ async function confirmarGuardar() {
   try {
     guardando.value = true
 
-    // Preparar payload del movimiento
+    // Preparar payload del movimiento según la estructura de la API
+    // MODO ESCRITURA: Enviar solo IDs (activo_id, usuario_registra_id, ubicacion_origen_id, ubicacion_destino_id)
+    // La API devolverá objetos completos + códigos en modo lectura (GET)
     const payload = {
       activo_id: activoSeleccionado.value.id,
-      tipo_movimiento: formulario.value.tipo_movimiento,
+      usuario_registra_id: authStore.user?.id,
       ubicacion_origen_id: activoSeleccionado.value.ubicacion_actual?.id || null,
-      ubicacion_destino_id: formulario.value.ubicacion_destino,
-      observaciones: formulario.value.observaciones?.trim() || ''
+      ubicacion_destino_id: formulario.value.ubicacion_destino_id,
+      tipo_movimiento: formulario.value.tipo_movimiento,
+      comentarios: formulario.value.comentarios?.trim() || ''
     }
 
     console.log('📤 Enviando movimiento:', payload)
 
     // Registrar el movimiento
-    await apiClient.post('/api/historial-movimientos/', payload)
+    const responseMovimiento = await apiClient.post('/api/historial-movimientos/', payload)
+    console.log('✅ Movimiento registrado:', responseMovimiento.data)
 
-    // Si se cambió el estado, actualizar el activo
-    if (cambiarEstado.value && formulario.value.nuevo_estado) {
-      const payloadActivo = {
-        estado_id: formulario.value.nuevo_estado,
-        ubicacion_actual_id: formulario.value.ubicacion_destino
-      }
-
-      console.log('📤 Actualizando activo:', payloadActivo)
-
-      await apiClient.patch(
-        `/api/activos/${activoSeleccionado.value.id}/`,
-        payloadActivo
-      )
-    } else {
-      // Solo actualizar ubicación
-      const payloadActivo = {
-        ubicacion_actual_id: formulario.value.ubicacion_destino
-      }
-
-      await apiClient.patch(
-        `/api/activos/${activoSeleccionado.value.id}/`,
-        payloadActivo
-      )
+    // Preparar payload para actualizar el activo
+    const payloadActivo = {
+      ubicacion_actual_id: formulario.value.ubicacion_destino_id
     }
+
+    // Si se cambió el estado, incluirlo en la actualización
+    if (cambiarEstado.value && formulario.value.nuevo_estado_id) {
+      payloadActivo.estado_id = formulario.value.nuevo_estado_id
+    }
+
+    console.log('📤 Actualizando activo:', payloadActivo)
+
+    // Actualizar el activo
+    await apiClient.patch(
+      `/api/activos/${activoSeleccionado.value.id}/`,
+      payloadActivo
+    )
+
+    console.log('✅ Activo actualizado')
 
     mostrarNotificacion(
       'Movimiento registrado correctamente', 
@@ -597,10 +550,9 @@ async function confirmarGuardar() {
 
     showConfirmDialog.value = false
 
-    // Limpiar formulario y recargar activo
+    // Redirigir después de 1.5 segundos
     setTimeout(() => {
-      limpiarFormulario()
-      cargarActivos()
+      router.push('/tecnico/home')
     }, 1500)
 
   } catch (error) {
@@ -621,6 +573,8 @@ async function confirmarGuardar() {
           }
         }
         mensajeError = errores.join(' | ')
+      } else if (typeof error.response.data === 'string') {
+        mensajeError = error.response.data
       }
     }
     
@@ -637,26 +591,6 @@ async function confirmarGuardar() {
 // ============================================================================
 
 /**
- * Maneja el cambio de activo seleccionado
- */
-function onActivoChange() {
-  if (!activoSeleccionadoId.value) {
-    activoSeleccionado.value = null
-    limpiarFormulario()
-    return
-  }
-
-  activoSeleccionado.value = activos.value.find(
-    a => a.id === activoSeleccionadoId.value
-  )
-
-  if (activoSeleccionado.value) {
-    console.log('✅ Activo seleccionado:', activoSeleccionado.value)
-    limpiarFormulario()
-  }
-}
-
-/**
  * Valida y muestra confirmación
  */
 async function guardarMovimiento() {
@@ -668,7 +602,7 @@ async function guardarMovimiento() {
   }
 
   // Validar que la ubicación destino sea diferente
-  if (formulario.value.ubicacion_destino === activoSeleccionado.value.ubicacion_actual?.id) {
+  if (formulario.value.ubicacion_destino_id === activoSeleccionado.value.ubicacion_actual?.id) {
     mostrarNotificacion(
       'La ubicación destino debe ser diferente a la ubicación actual', 
       'warning', 
@@ -677,32 +611,18 @@ async function guardarMovimiento() {
     return
   }
 
+  // Validar que si está marcado "cambiar estado", se haya seleccionado uno
+  if (cambiarEstado.value && !formulario.value.nuevo_estado_id) {
+    mostrarNotificacion(
+      'Por favor selecciona el nuevo estado del activo', 
+      'warning', 
+      'mdi-alert'
+    )
+    return
+  }
+
   // Mostrar confirmación
   showConfirmDialog.value = true
-}
-
-/**
- * Limpia el formulario
- */
-function limpiarFormulario() {
-  formulario.value = {
-    tipo_movimiento: null,
-    ubicacion_destino: null,
-    nuevo_estado: null,
-    observaciones: ''
-  }
-  cambiarEstado.value = false
-
-  if (formRef.value) {
-    formRef.value.resetValidation()
-  }
-}
-
-/**
- * Obtiene el label del activo para el autocomplete
- */
-function getActivoLabel(activo) {
-  return `${activo.marca} ${activo.modelo} - ${activo.codigo_inventario}`
 }
 
 /**
@@ -766,20 +686,14 @@ function volver() {
 // ============================================================================
 
 onMounted(async () => {
-  // Primero cargar los datos necesarios (ubicaciones y estados)
+  console.log('🎯 ID del activo desde ruta:', props.id)
+  
+  // Cargar datos en paralelo
   await Promise.all([
-    cargarActivos(), // Cargar activos para el autocomplete
+    cargarActivo(),
     cargarUbicaciones(),
     cargarEstados()
   ])
-
-  // Si viene un activo_id desde la URL (desde escaneo QR), cargarlo automáticamente
-  const activoIdFromUrl = route.query.activo_id || route.params.activo_id
-  
-  if (activoIdFromUrl) {
-    console.log('🎯 Detectado activo_id en URL:', activoIdFromUrl)
-    await cargarActivoPorId(parseInt(activoIdFromUrl))
-  }
 })
 
 </script>
@@ -802,6 +716,19 @@ onMounted(async () => {
 
 .info-field {
   margin-bottom: 1rem;
+}
+
+/* ============================================================================
+   LOADING STATE
+   ============================================================================ */
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1rem;
+  min-height: 400px;
 }
 
 /* ============================================================================

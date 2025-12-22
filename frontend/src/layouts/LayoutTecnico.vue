@@ -36,7 +36,7 @@
         <span>Inicio</span>
       </v-btn>
 
-      <v-btn value="history" @click="navigateTo('/tecnico/history')">
+      <v-btn value="mihistorial" @click="navigateTo('/tecnico/mihistorial')">
         <v-icon>mdi-history</v-icon>
         <span>Mi Historial</span>
       </v-btn>

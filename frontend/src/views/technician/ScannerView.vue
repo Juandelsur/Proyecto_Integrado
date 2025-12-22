@@ -728,8 +728,8 @@ async function fetchUltimosMovimientos() {
 function generarMovimiento() {
   if (!currentAsset.value) return
   router.push({
-    name: 'confirm-asset',
-    params: { id: currentAsset.value.id }
+    name: 'movimiento-tecnico-create',
+    params: { id: currentAsset.value.id },
   })
 }
 
@@ -737,7 +737,7 @@ function actualizarActivo() {
   if (!currentAsset.value) return
   router.push({
     name: 'technician-edit-activo',
-    query: { codigo: currentAsset.value.codigo_inventario }
+    params: { id: currentAsset.value.id },
   })
 }
 
