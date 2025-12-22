@@ -224,7 +224,44 @@ const router = createRouter({
       }
     },
     // ========================================================================
-    // RUTAS DEL ADMINISTRADOR 
+    // RUTAS DEL JEFE DE DEPARTAMENTO
+    // ========================================================================
+    {
+      path: '/jefe',
+      component: () => import('../layouts/LayoutJefe.vue'),
+      meta: {
+        requiresAuth: true,
+        requiresRole: 'Jefe de Departamento'
+      },
+      children: [
+        {
+          path: 'home',
+          name: 'jefe-home',
+          component: () => import('../views/jefe/JefeHome.vue'),
+          meta: {
+            title: 'Dashboard - Jefe de Departamento'
+          }
+        },
+        {
+          path: 'reportes',
+          name: 'jefe-reportes',
+          component: () => import('../views/jefe/ReportesView.vue'),
+          meta: {
+            title: 'Reportes - Jefe de Departamento'
+          }
+        },
+        {
+          path: 'imprimir-qr',
+          name: 'jefe-imprimir-qr',
+          component: () => import('../views/ImprimirQrView.vue'),
+          meta: {
+            title: 'Imprimir QR - Jefe de Departamento'
+          }
+        }
+      ]
+    },
+    // ========================================================================
+    // RUTAS DEL ADMINISTRADOR
     // ========================================================================
     {
       path: '/admin',
@@ -369,18 +406,20 @@ router.beforeEach((to, from, next) => {
 
   // 2. Verificar rol (ahora soporta string o array)
   if (to.meta.requiresRole) {
-    const requiredRoles = Array.isArray(to.meta.requiresRole) 
-      ? to.meta.requiresRole 
+    const requiredRoles = Array.isArray(to.meta.requiresRole)
+      ? to.meta.requiresRole
       : [to.meta.requiresRole]
-    
+
     if (!requiredRoles.includes(authStore.userRole)) {
       console.warn(`Acceso denegado. Rol requerido: ${requiredRoles.join(' o ')}`)
-      
+
       // Redirigir según el rol del usuario
       if (authStore.userRole === 'Administrador') {
         next({ name: 'admin-home' })
       } else if (authStore.userRole === 'Técnico') {
         next({ name: 'technician-home' })
+      } else if (authStore.userRole === 'Jefe de Departamento') {
+        next({ name: 'jefe-home' })
       } else {
         next({ name: 'login' })
       }

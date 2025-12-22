@@ -151,8 +151,8 @@ async function handleLogin() {
       redirectPath = '/admin/home'
       console.log('🎯 Redirigiendo a: /admin/home (Administrador)')
     } else if (rolNormalizado.includes('jefe')) {
-      redirectPath = '/home'
-      console.log('🎯 Redirigiendo a: /home (Jefe de Departamento)')
+      redirectPath = '/jefe/home'
+      console.log('🎯 Redirigiendo a: /jefe/home (Jefe de Departamento)')
     } else {
       // Fallback: Si no se puede determinar el rol
       console.warn('⚠️ No se pudo determinar el rol del usuario')
