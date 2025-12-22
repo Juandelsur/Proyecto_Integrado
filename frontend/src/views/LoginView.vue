@@ -141,18 +141,44 @@ async function handleLogin() {
 
     console.log('🔍 Rol normalizado:', rolNormalizado)
 
-    let redirectPath = '/' // Fallback por defecto
+    // ============================================================================
+    // MAPAS DE RUTAS Y PREFIJOS POR ROL (Seguridad RBAC)
+    // ============================================================================
+    
+    // Mapa de rutas home por defecto para cada rol
+    const roleHomePaths = {
+      'Administrador': '/admin/home',
+      'Técnico': '/tecnico/home',
+      'Jefe de Departamento': '/jefe/home'
+    }
 
-    // Lógica de redirección robusta con normalización
+    // Mapa de prefijos permitidos por rol (validación de territorio)
+    const rolePrefixes = {
+      'Administrador': '/admin',
+      'Técnico': '/tecnico',
+      'Jefe de Departamento': '/jefe'
+    }
+
+    // ============================================================================
+    // DETERMINAR ROL Y RUTA BASE
+    // ============================================================================
+    
+    let userRole = null
+    let defaultPath = '/' // Fallback por defecto
+
+    // Determinar el rol del usuario
     if (rolNormalizado.includes('técnico') || rolNormalizado.includes('tecnico')) {
-      redirectPath = '/tecnico/home'
-      console.log('🎯 Redirigiendo a: /tecnico/home (Técnico)')
+      userRole = 'Técnico'
+      defaultPath = roleHomePaths['Técnico']
+      console.log('🎯 Rol detectado: Técnico → Ruta base: /tecnico/home')
     } else if (rolNormalizado.includes('administrador') || rolNormalizado.includes('admin')) {
-      redirectPath = '/admin/home'
-      console.log('🎯 Redirigiendo a: /admin/home (Administrador)')
+      userRole = 'Administrador'
+      defaultPath = roleHomePaths['Administrador']
+      console.log('🎯 Rol detectado: Administrador → Ruta base: /admin/home')
     } else if (rolNormalizado.includes('jefe')) {
-      redirectPath = '/jefe/home'
-      console.log('🎯 Redirigiendo a: /jefe/home (Jefe de Departamento)')
+      userRole = 'Jefe de Departamento'
+      defaultPath = roleHomePaths['Jefe de Departamento']
+      console.log('🎯 Rol detectado: Jefe de Departamento → Ruta base: /jefe/home')
     } else {
       // Fallback: Si no se puede determinar el rol
       console.warn('⚠️ No se pudo determinar el rol del usuario')
@@ -165,12 +191,36 @@ async function handleLogin() {
       return
     }
 
-    // 6. Redirigir (usar query redirect si existe)
-    const finalRedirect = route.query.redirect || redirectPath
-    console.log('🚀 Redirección final:', finalRedirect)
+    // ============================================================================
+    // VALIDACIÓN INTELIGENTE DE REDIRECT (Previene bucles entre roles)
+    // ============================================================================
+    
+    const targetPath = route.query.redirect
+    let finalPath = defaultPath
 
-    await router.push(finalRedirect)
-    console.log('✅ Redirección completada')
+    console.log('🔍 Query redirect detectado:', targetPath || 'ninguno')
+
+    if (targetPath && typeof targetPath === 'string') {
+      const allowedPrefix = rolePrefixes[userRole]
+      
+      // ✅ VALIDACIÓN: Solo respetar el redirect si pertenece al territorio del usuario
+      if (allowedPrefix && targetPath.startsWith(allowedPrefix)) {
+        finalPath = targetPath
+        console.log('✅ Redirect VÁLIDO para este rol → Usando:', finalPath)
+      } else {
+        // ⚠️ El redirect pertenece a otro rol → IGNORAR y usar ruta por defecto
+        console.warn(`⚠️ Redirect BLOQUEADO: "${targetPath}" no coincide con el prefijo permitido "${allowedPrefix}"`)
+        console.log(`🛡️ Protección anti-bucle: Redirigiendo a ruta segura del rol → ${defaultPath}`)
+      }
+    } else {
+      console.log('ℹ️ No hay redirect en query string → Usando ruta por defecto del rol')
+    }
+
+    // 6. Redirigir a la ruta final validada
+    console.log('🚀 Redirección final:', finalPath)
+
+    await router.push(finalPath)
+    console.log('✅ Redirección completada exitosamente')
 
   } catch (error) {
     // Manejo de errores
