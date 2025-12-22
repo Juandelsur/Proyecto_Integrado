@@ -92,28 +92,13 @@ const currentRoute = computed(() => route.path)
 
 /**
  * Genera los items de navegación según el rol del usuario
- * 
- * CONFIGURACIÓN POR ROL:
- * 
- * TÉCNICO:
- * - Inicio (/tecnico)
- * - Historial (/tecnico/historial)
- * - Otros (/tecnico/otros)
- * 
- * ADMINISTRADOR:
- * - Inicio (/admin)
- * - Gestión (/admin/gestion)
- * - Otros (/admin/otros)
- * 
- * JEFE DE DEPARTAMENTO:
- * - Inicio (/jefe)
- * - Otros (/jefe/otros)
+ * ACTUALIZADO CON TODAS LAS RUTAS MIGRADAS
  */
 const navItems = computed(() => {
   const role = authStore.userRole
 
   // =========================================================================
-  // TÉCNICO - Navegación
+  // TÉCNICO - Navegación Completa
   // =========================================================================
   if (role === 'Técnico') {
     return [
@@ -121,6 +106,26 @@ const navItems = computed(() => {
         title: 'Inicio', 
         icon: 'mdi-home', 
         to: '/tecnico' 
+      },
+      { 
+        title: 'Escanear QR', 
+        icon: 'mdi-qrcode-scan', 
+        to: '/tecnico/scan' 
+      },
+      { 
+        title: 'Crear Activo', 
+        icon: 'mdi-plus-circle', 
+        to: '/tecnico/crear' 
+      },
+      { 
+        title: 'Editar Activo', 
+        icon: 'mdi-pencil', 
+        to: '/tecnico/editar-buscar' 
+      },
+      { 
+        title: 'Imprimir Etiquetas', 
+        icon: 'mdi-printer', 
+        to: '/tecnico/imprimir' 
       },
       { 
         title: 'Historial', 
@@ -136,7 +141,7 @@ const navItems = computed(() => {
   }
 
   // =========================================================================
-  // ADMINISTRADOR - Navegación
+  // ADMINISTRADOR - Navegación Completa
   // =========================================================================
   if (role === 'Administrador') {
     return [
@@ -146,9 +151,66 @@ const navItems = computed(() => {
         to: '/admin' 
       },
       { 
-        title: 'Gestión', 
-        icon: 'mdi-cog', 
-        to: '/admin/gestion' 
+        title: 'Inventario', 
+        icon: 'mdi-package-variant', 
+        to: '/inventario' 
+      },
+      // --- Gestión ---
+      { 
+        title: 'Gestión de Activos', 
+        icon: 'mdi-laptop', 
+        to: '/admin/activos' 
+      },
+      { 
+        title: 'Gestión de Usuarios', 
+        icon: 'mdi-account-multiple', 
+        to: '/admin/usuarios' 
+      },
+      { 
+        title: 'Departamentos', 
+        icon: 'mdi-office-building', 
+        to: '/admin/departamentos' 
+      },
+      { 
+        title: 'Ubicaciones', 
+        icon: 'mdi-map-marker', 
+        to: '/admin/ubicaciones' 
+      },
+      { 
+        title: 'Tipos de Equipo', 
+        icon: 'mdi-shape', 
+        to: '/admin/tipos-equipo' 
+      },
+      { 
+        title: 'Estados de Activos', 
+        icon: 'mdi-tag', 
+        to: '/admin/estado-activos' 
+      },
+      { 
+        title: 'Roles', 
+        icon: 'mdi-shield-account', 
+        to: '/admin/roles' 
+      },
+      // --- Reportes y Auditoría ---
+      { 
+        title: 'Historial', 
+        icon: 'mdi-history', 
+        to: '/admin/historial' 
+      },
+      { 
+        title: 'Reportes', 
+        icon: 'mdi-chart-bar', 
+        to: '/admin/reportes' 
+      },
+      { 
+        title: 'Auditoría', 
+        icon: 'mdi-file-document-outline', 
+        to: '/admin/auditoria' 
+      },
+      { 
+        title: 'Imprimir QR', 
+        icon: 'mdi-qrcode', 
+        to: '/admin/imprimir-qr' 
       },
       { 
         title: 'Otros', 

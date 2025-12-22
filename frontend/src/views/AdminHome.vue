@@ -1,88 +1,232 @@
 <template>
-  <v-app>
+  <v-container fluid class="pa-6">
     <!-- Header -->
-    <v-app-bar color="primary" density="compact">
-      <v-app-bar-title>Administrador</v-app-bar-title>
-      <v-spacer></v-spacer>
-      <v-btn icon @click="handleLogout">
-        <v-icon>mdi-logout</v-icon>
-      </v-btn>
-    </v-app-bar>
+    <div class="mb-8">
+      <h1 class="text-h4 font-weight-bold mb-2">Panel de Administrador</h1>
+      <p class="text-subtitle-1 text-medium-emphasis">Bienvenido al sistema de control de activos hospitalarios</p>
+    </div>
 
-    <!-- Body -->
-    <v-main>
-      <v-container class="fill-height d-flex align-center justify-center">
+    <!-- Accesos Rápidos - Principales -->
         <v-row>
-          <v-col cols="12" class="d-flex flex-column align-center">
-            <!-- Botón 1: Gestionar Usuarios -->
-            <v-btn
+      <!-- Card: Inventario -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card 
+          hover 
+          @click="router.push({ name: 'asset-list' })"
+          class="dashboard-card"
               color="primary"
-              size="x-large"
-              block
-              class="mb-4"
-              @click="navigateTo('usuarios')"
-            >
-              <v-icon left class="mr-2">mdi-account-multiple</v-icon>
-              Gestionar Usuarios
-            </v-btn>
+          theme="dark"
+        >
+          <v-card-text class="text-center pa-6">
+            <v-icon size="64" class="mb-4">mdi-package-variant</v-icon>
+            <h3 class="text-h6 font-weight-bold mb-2">Inventario</h3>
+            <p class="text-body-2">Ver todos los activos</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-            <!-- Botón 2: Maestro de Activos -->
-            <v-btn
-              color="primary"
-              size="x-large"
-              block
-              class="mb-4"
-              @click="navigateTo('activos')"
-            >
-              <v-icon left class="mr-2">mdi-clipboard-list</v-icon>
-              Maestro de Activos
-            </v-btn>
+      <!-- Card: Gestión de Activos -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card 
+          hover 
+          @click="router.push({ name: 'admin-activos' })"
+          class="dashboard-card"
+          color="secondary"
+          theme="dark"
+        >
+          <v-card-text class="text-center pa-6">
+            <v-icon size="64" class="mb-4">mdi-laptop</v-icon>
+            <h3 class="text-h6 font-weight-bold mb-2">Gestión de Activos</h3>
+            <p class="text-body-2">Administrar equipos</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
 
-            <!-- Botón 3: Auditoría -->
-            <v-btn
-              color="primary"
-              size="x-large"
-              block
-              class="mb-4"
-              @click="navigateTo('auditoria')"
-            >
-              <v-icon left class="mr-2">mdi-file-document</v-icon>
-              Auditoría
-            </v-btn>
+      <!-- Card: Gestión de Usuarios -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card 
+          hover 
+          @click="router.push({ name: 'admin-usuarios' })"
+          class="dashboard-card"
+          color="success"
+          theme="dark"
+        >
+          <v-card-text class="text-center pa-6">
+            <v-icon size="64" class="mb-4">mdi-account-multiple</v-icon>
+            <h3 class="text-h6 font-weight-bold mb-2">Usuarios</h3>
+            <p class="text-body-2">Gestionar usuarios</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Sección: Catálogos del Sistema -->
+    <h2 class="text-h5 font-weight-bold mt-8 mb-4">
+      <v-icon class="mr-2">mdi-cog</v-icon>
+      Catálogos del Sistema
+    </h2>
+    <v-row>
+      <!-- Departamentos -->
+      <v-col cols="12" sm="6" md="3">
+        <v-card hover @click="router.push({ name: 'admin-departamentos' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-office-building</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Departamentos</h4>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Ubicaciones -->
+      <v-col cols="12" sm="6" md="3">
+        <v-card hover @click="router.push({ name: 'admin-ubicaciones' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-map-marker</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Ubicaciones</h4>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Tipos de Equipo -->
+      <v-col cols="12" sm="6" md="3">
+        <v-card hover @click="router.push({ name: 'admin-tipos-equipo' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-shape</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Tipos de Equipo</h4>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Estados de Activos -->
+      <v-col cols="12" sm="6" md="3">
+        <v-card hover @click="router.push({ name: 'admin-estado-activos' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-tag</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Estados</h4>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Roles -->
+      <v-col cols="12" sm="6" md="3">
+        <v-card hover @click="router.push({ name: 'admin-roles' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-shield-account</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Roles</h4>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Sección: Reportes y Auditoría -->
+    <h2 class="text-h5 font-weight-bold mt-8 mb-4">
+      <v-icon class="mr-2">mdi-chart-bar</v-icon>
+      Reportes y Auditoría
+    </h2>
+    <v-row>
+      <!-- Historial -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card hover @click="router.push({ name: 'admin-historial' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="info" class="mb-2">mdi-history</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Historial</h4>
+            <p class="text-caption text-medium-emphasis">Movimientos registrados</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Reportes -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card hover @click="router.push({ name: 'admin-reportes' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="success" class="mb-2">mdi-chart-bar</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Reportes</h4>
+            <p class="text-caption text-medium-emphasis">Estadísticas y análisis</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Auditoría -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card hover @click="router.push({ name: 'admin-auditoria' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="warning" class="mb-2">mdi-file-document-outline</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Auditoría</h4>
+            <p class="text-caption text-medium-emphasis">Registro de acciones</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Sección: Herramientas -->
+    <h2 class="text-h5 font-weight-bold mt-8 mb-4">
+      <v-icon class="mr-2">mdi-tools</v-icon>
+      Herramientas
+    </h2>
+    <v-row>
+      <!-- Imprimir QR -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card hover @click="router.push({ name: 'admin-imprimir-qr' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-qrcode</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Imprimir QR</h4>
+            <p class="text-caption text-medium-emphasis">Generar etiquetas QR</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Gestión General -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card hover @click="router.push({ name: 'AdminGestion' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-cog</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Gestión</h4>
+            <p class="text-caption text-medium-emphasis">Configuración general</p>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Otros -->
+      <v-col cols="12" sm="6" md="4">
+        <v-card hover @click="router.push({ name: 'AdminOtros' })">
+          <v-card-text class="text-center pa-4">
+            <v-icon size="48" color="primary" class="mb-2">mdi-dots-horizontal</v-icon>
+            <h4 class="text-subtitle-1 font-weight-bold">Otros</h4>
+            <p class="text-caption text-medium-emphasis">Opciones adicionales</p>
+          </v-card-text>
+        </v-card>
           </v-col>
         </v-row>
       </v-container>
-    </v-main>
-  </v-app>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
 
 // ============================================================================
 // COMPOSABLES
 // ============================================================================
 
 const router = useRouter()
-const authStore = useAuthStore()
-
-// ============================================================================
-// METHODS
-// ============================================================================
-
-function handleLogout() {
-  authStore.logout()
-  router.push('/login')
-}
-
-function navigateTo(route) {
-  // TODO: Implementar navegación cuando las rutas estén disponibles
-  console.log(`Navegando a: ${route}`)
-  // router.push(`/${route}`)
-}
 </script>
 
 <style scoped>
-/* Estilos adicionales si son necesarios */
+.dashboard-card {
+  cursor: pointer;
+  transition: transform 0.2s ease-in-out;
+  height: 100%;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+}
+
+.v-card {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.v-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+}
 </style>
