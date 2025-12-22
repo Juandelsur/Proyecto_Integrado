@@ -1,21 +1,21 @@
 /**
  * Configuración de Axios para peticiones HTTP al backend
- * 
+ *
  * Este archivo centraliza la configuración del cliente HTTP usando Axios.
  * Utiliza variables de entorno para configurar la baseURL según el ambiente.
- * 
+ *
  * Variables de entorno:
- * - VITE_API_URL: URL del backend (definida en .env.production o .env.development)
- * 
- * Fallback: Si no se define VITE_API_URL, usa http://localhost:8000 (desarrollo local)
+ * - VITE_API_URL: URL del backend (definida en .env)
+ *
+ * Fallback de Seguridad: Si no se define VITE_API_URL, usa PRODUCCIÓN en Render
  */
 
 import axios from 'axios'
 
 // Configuración de la URL base del API
-// En producción (Vercel): https://backend-sca.onrender.com
-// En desarrollo local: http://localhost:8000
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// PRODUCCIÓN: https://backend-sca.onrender.com (Render)
+// Fallback forzado a producción para garantizar conectividad
+const baseURL = import.meta.env.VITE_API_URL || 'https://backend-sca.onrender.com'
 
 // Crear instancia de Axios con configuración personalizada
 const apiClient = axios.create({
