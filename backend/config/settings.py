@@ -44,12 +44,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '192.168.1.13',  # IP local para pruebas en red
+    'backend-sca.onrender.com',  # Backend en Render (producción)
 ]
-
-# CSRF Trusted Origins (CRÍTICO para Django 4+ con HTTPS en Render)
-# En producción: https://tu-app.onrender.com,https://tu-dominio.com
-# En desarrollo: http://localhost
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
 
 
 # ==============================================================================
@@ -200,22 +196,41 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'core.Usuario'
 
 # ==============================================================================
-# CORS CONFIGURATION
+# CSRF TRUSTED ORIGINS (Django 4+)
+# ==============================================================================
+# CRÍTICO: Django 4+ requiere estos orígenes para POST requests desde frontend
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://backend-sca.onrender.com",                                                # Backend Render
+    "https://proyecto-integrado-p0gxwiiy0-juanmunoz6895-4026s-projects.vercel.app",   # Vercel Preview actual
+]
+
+# NOTA: Para agregar nuevas URLs de preview de Vercel:
+# 1. Obtén la URL después del deploy en Vercel
+# 2. Agrégala a esta lista
+# 3. Commit y push → Render re-desplegará automáticamente
+# 
+# ALTERNATIVA: Si tienes un dominio de producción fijo en Vercel, agrégalo aquí:
+# "https://tu-app-produccion.vercel.app"
+
+# ==============================================================================
+# CORS CONFIGURATION (Estrategia Híbrida para Vercel + Local)
 # ==============================================================================
 
-# Para desarrollo: permitir todos los orígenes (True)
-# Para producción: especificar orígenes permitidos (False)
-#CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL', 'True') == 'True'
-CORS_ALLOW_ALL_ORIGINS = True
+# 1. Permitir dominios específicos (Local + Backend Render)
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",                    # Dev local (Vite)
+    "http://127.0.0.1:5173",                    # Dev local (alternativo)
+    "https://backend-sca.onrender.com",         # Backend Render (mismo dominio)
+]
 
-# Orígenes permitidos en producción (separados por comas en variable de entorno)
-# Ejemplo: https://tu-frontend.vercel.app,https://tu-dominio.com
+# 2. Permitir Vercel dinámicamente (Regex para Previews y Producción)
+# Esto autoriza cualquier URL de Vercel que empiece con "proyecto-integrado-"
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://proyecto-integrado-.*\.vercel\.app$",
+]
 
-
-#CORS_ALLOWED_ORIGINS_STR = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173')
-#CORS_ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ALLOWED_ORIGINS_STR.split(',') if origin.strip()]
-
-# Permitir cookies y credenciales en requests CORS
+# Permitir credenciales (JWT Bearer Token)
 CORS_ALLOW_CREDENTIALS = True
 
 # ==============================================================================

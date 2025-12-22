@@ -5,17 +5,19 @@
  * Utiliza variables de entorno para configurar la baseURL según el ambiente.
  * 
  * Variables de entorno:
- * - VITE_API_URL: URL del backend (definida en .env.production o .env.development)
+ * - VITE_API_URL: URL del backend (definida en .env, .env.production o .env.development)
  * 
- * Fallback: Si no se define VITE_API_URL, usa http://localhost:8000 (desarrollo local)
+ * SEGURIDAD CLOUD: El fallback apunta a Render (NUNCA a localhost).
+ * Esto garantiza que la aplicación funcione correctamente en producción
+ * incluso si las variables de entorno no están configuradas.
  */
 
 import axios from 'axios'
 
 // Configuración de la URL base del API
-// En producción (Vercel): https://backend-sca.onrender.com
-// En desarrollo local: http://localhost:8000
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// PRODUCCIÓN: https://backend-sca.onrender.com (Render)
+// FALLBACK DE SEGURIDAD: Si VITE_API_URL no está definida, usa Render (NUNCA localhost)
+const baseURL = import.meta.env.VITE_API_URL || 'https://backend-sca.onrender.com'
 
 // Crear instancia de Axios con configuración personalizada
 const apiClient = axios.create({
