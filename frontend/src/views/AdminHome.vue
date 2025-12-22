@@ -77,9 +77,20 @@ function handleLogout() {
 }
 
 function navigateTo(route) {
-  // TODO: Implementar navegación cuando las rutas estén disponibles
-  console.log(`Navegando a: ${route}`)
-  // router.push(`/${route}`)
+  // Mapear las rutas según la sección del dashboard
+  const routeMap = {
+    'usuarios': '/admin/gestion',     // Gestión del Sistema
+    'activos': '/admin/activos',       // Maestro de Activos
+    'auditoria': '/admin/otros'        // Auditoría (Otras Opciones)
+  }
+  
+  const targetRoute = routeMap[route]
+  
+  if (targetRoute) {
+    router.push(targetRoute)
+  } else {
+    console.warn(`Ruta no encontrada: ${route}`)
+  }
 }
 </script>
 

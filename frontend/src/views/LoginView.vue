@@ -68,38 +68,15 @@
             </v-form>
           </v-card-text>
 
-          <!-- Footer con usuarios de prueba -->
+          <!-- Footer con información del sistema -->
           <v-divider></v-divider>
           <v-card-text class="pa-4 bg-grey-lighten-4">
-            <p class="text-subtitle-2 text-center mb-2 font-weight-bold">
-              🔑 Usuarios de Prueba (Desarrollo)
+            <p class="text-caption text-center text-grey-darken-1">
+              Sistema de Control de Activos - Hospital
             </p>
-            <v-list density="compact" class="bg-transparent">
-              <v-list-item density="compact">
-                <template v-slot:prepend>
-                  <v-icon size="small" color="error">mdi-shield-crown</v-icon>
-                </template>
-                <v-list-item-title class="text-caption">
-                  <strong>admin</strong> / admin123 → Administrador
-                </v-list-item-title>
-              </v-list-item>
-              <v-list-item density="compact">
-                <template v-slot:prepend>
-                  <v-icon size="small" color="info">mdi-account-wrench</v-icon>
-                </template>
-                <v-list-item-title class="text-caption">
-                  <strong>tec</strong> / tec123 → Técnico
-                </v-list-item-title>
-              </v-list-item>
-              <v-list-item density="compact">
-                <template v-slot:prepend>
-                  <v-icon size="small" color="success">mdi-account-tie</v-icon>
-                </template>
-                <v-list-item-title class="text-caption">
-                  <strong>jefe</strong> / jefe123 → Jefe de Departamento
-                </v-list-item-title>
-              </v-list-item>
-            </v-list>
+            <p class="text-caption text-center text-grey-darken-1 mt-1">
+              Versión 1.0.0 - Producción
+            </p>
           </v-card-text>
         </v-card>
       </v-col>
@@ -142,6 +119,15 @@ const rules = {
 // METHODS
 // ============================================================================
 
+/**
+ * Maneja el envío del formulario de login
+ *
+ * Flujo:
+ * 1. Valida el formulario
+ * 2. Llama a authStore.login() que conecta con el backend Django
+ * 3. Si es exitoso, redirige según el rol del usuario
+ * 4. Si falla, muestra el mensaje de error específico
+ */
 async function handleLogin() {
   // Validar formulario
   const { valid } = await loginForm.value.validate()
@@ -151,27 +137,41 @@ async function handleLogin() {
   errorMessage.value = ''
 
   try {
+    console.log('🔐 [LoginView] Intentando login con usuario:', username.value)
+
     const result = await authStore.login(username.value, password.value)
 
     if (result.success) {
-      // Redirigir según el rol
+      // Login exitoso - Obtener rol del usuario
       const role = authStore.userRole
 
+      console.log('✅ [LoginView] Login exitoso - Rol:', role)
+
+      // Redirigir según el rol (RBAC)
       if (role === 'Administrador') {
+        console.log('🔀 [LoginView] Redirigiendo a /admin')
         router.push('/admin')
       } else if (role === 'Técnico') {
+        console.log('🔀 [LoginView] Redirigiendo a /tecnico')
         router.push('/tecnico')
       } else if (role === 'Jefe de Departamento') {
+        console.log('🔀 [LoginView] Redirigiendo a /jefe')
         router.push('/jefe')
       } else {
-        router.push('/')
+        // Rol desconocido - redirigir al login
+        console.warn('⚠️ [LoginView] Rol desconocido:', role)
+        errorMessage.value = `Rol "${role}" no reconocido. Contacta al administrador.`
+        authStore.logout()
       }
     } else {
+      // Login fallido - Mostrar mensaje de error
+      console.error('❌ [LoginView] Login fallido:', result.message)
       errorMessage.value = result.message || 'Error al iniciar sesión'
     }
   } catch (error) {
-    console.error('Error en login:', error)
-    errorMessage.value = 'Error inesperado al iniciar sesión'
+    // Error inesperado
+    console.error('❌ [LoginView] Error inesperado en login:', error)
+    errorMessage.value = 'Error inesperado al iniciar sesión. Intenta nuevamente.'
   } finally {
     loading.value = false
   }

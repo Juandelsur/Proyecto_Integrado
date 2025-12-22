@@ -13,9 +13,8 @@
 import axios from 'axios'
 
 // Configuración de la URL base del API
-// En producción (Vercel): https://backend-sca.onrender.com
-// En desarrollo local: http://localhost:8000
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// FORZADO A PRODUCCIÓN: Conectar directamente a Render
+const baseURL = 'https://backend-sca.onrender.com'
 
 // Crear instancia de Axios con configuración personalizada
 const apiClient = axios.create({

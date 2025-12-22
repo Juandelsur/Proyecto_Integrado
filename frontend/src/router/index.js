@@ -25,6 +25,7 @@ import TecnicoOtros from '@/views/tecnico/OtrosView.vue'
 
 // Vistas Secundarias - Admin
 import AdminGestion from '@/views/admin/GestionView.vue'
+import AdminActivos from '@/views/admin/ActivosView.vue'
 import AdminOtros from '@/views/admin/OtrosView.vue'
 
 // Vistas Secundarias - Jefe
@@ -80,6 +81,14 @@ const router = createRouter({
           component: AdminGestion,
           meta: {
             title: 'Gestión del Sistema',
+          }
+        },
+        {
+          path: 'activos',
+          name: 'AdminActivos',
+          component: AdminActivos,
+          meta: {
+            title: 'Gestión de Activos',
           }
         },
         {

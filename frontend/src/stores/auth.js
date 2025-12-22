@@ -175,124 +175,171 @@ export const useAuthStore = defineStore('auth', () => {
   // ============================================================================
   
   /**
-   * Login: Autentica al usuario y guarda el token
-   * 
-   * VERSIÓN SIMULADA PARA DESARROLLO (FASE 3 - Refactorización)
-   * 
-   * Usuarios de prueba:
-   * - admin / admin123 -> Rol: Administrador
-   * - tec / tec123 -> Rol: Técnico
-   * - jefe / jefe123 -> Rol: Jefe de Departamento
+   * Login: Autentica al usuario contra el backend Django y guarda el token JWT
+   *
+   * VERSIÓN PRODUCCIÓN - AUTENTICACIÓN JWT REAL
+   *
+   * Flujo:
+   * 1. POST /api/auth/token/ con username y password
+   * 2. Recibe { access, refresh } tokens JWT
+   * 3. Guarda tokens en localStorage y state
+   * 4. GET /api/usuarios/me/ para obtener información del usuario
+   * 5. Guarda usuario completo (con rol) en localStorage y state
+   *
+   * @param {string} username - Nombre de usuario
+   * @param {string} password - Contraseña
+   * @returns {Promise<{success: boolean, message?: string}>}
    */
   async function login(username, password) {
     try {
+      console.log('🔐 [Auth] Iniciando login con backend Django...')
+
       // ========================================================================
-      // LOGIN SIMULADO (Para desarrollo sin backend)
+      // PASO 1: OBTENER TOKENS JWT DEL BACKEND
       // ========================================================================
-      
-      // Simular delay de red
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Validar credenciales simuladas
-      let mockUser = null
-      
-      if (username === 'admin' && password === 'admin123') {
-        mockUser = {
-          id: 1,
-          username: 'admin',
-          email: 'admin@hospital.com',
-          rol: {
-            id: 1,
-            nombre_rol: 'Administrador'
-          }
-        }
-      } else if (username === 'tec' && password === 'tec123') {
-        mockUser = {
-          id: 2,
-          username: 'tec',
-          email: 'tecnico@hospital.com',
-          rol: {
-            id: 2,
-            nombre_rol: 'Técnico'
-          }
-        }
-      } else if (username === 'jefe' && password === 'jefe123') {
-        mockUser = {
-          id: 3,
-          username: 'jefe',
-          email: 'jefe@hospital.com',
-          rol: {
-            id: 3,
-            nombre_rol: 'Jefe de Departamento'
-          }
-        }
-      } else {
-        return {
-          success: false,
-          message: 'Usuario o contraseña incorrectos'
-        }
-      }
-      
-      // Generar tokens simulados
-      const mockAccessToken = `mock_access_${mockUser.username}_${Date.now()}`
-      const mockRefreshToken = `mock_refresh_${mockUser.username}_${Date.now()}`
-      
-      // Guardar tokens
-      token.value = mockAccessToken
-      refreshToken.value = mockRefreshToken
-      localStorage.setItem('access_token', mockAccessToken)
-      localStorage.setItem('refresh_token', mockRefreshToken)
-      
-      // Guardar usuario
-      user.value = mockUser
-      localStorage.setItem('user', JSON.stringify(mockUser))
-      
-      return { success: true }
-      
-      // ========================================================================
-      // LOGIN REAL (Descomentar cuando el backend esté listo)
-      // ========================================================================
-      /*
-      const response = await apiClient.post('/api/auth/token/', {
+
+      const tokenResponse = await apiClient.post('/api/auth/token/', {
         username,
         password
       })
 
-      const { access, refresh } = response.data
-      
-      // Guardar tokens
+      console.log('✅ [Auth] Tokens JWT recibidos del backend')
+
+      const { access, refresh } = tokenResponse.data
+
+      // Validar que los tokens existan
+      if (!access || !refresh) {
+        throw new Error('El backend no retornó los tokens JWT correctamente')
+      }
+
+      // ========================================================================
+      // PASO 2: GUARDAR TOKENS EN LOCALSTORAGE Y STATE
+      // ========================================================================
+
       token.value = access
       refreshToken.value = refresh
       localStorage.setItem('access_token', access)
       localStorage.setItem('refresh_token', refresh)
-      
-      // Obtener información del usuario
+
+      console.log('💾 [Auth] Tokens guardados en localStorage')
+
+      // ========================================================================
+      // PASO 3: OBTENER INFORMACIÓN DEL USUARIO AUTENTICADO
+      // ========================================================================
+
       await fetchUserInfo()
-      
+
+      console.log('✅ [Auth] Login completado exitosamente')
+      console.log('👤 [Auth] Usuario:', user.value?.username)
+      console.log('🎭 [Auth] Rol:', user.value?.rol?.nombre_rol)
+
       return { success: true }
-      */
-      
+
     } catch (error) {
-      console.error('Error en login:', error)
-      return { 
-        success: false, 
-        message: error.response?.data?.detail || 'Error al iniciar sesión' 
+      console.error('❌ [Auth] Error en login:', error)
+
+      // Limpiar cualquier dato parcial
+      token.value = null
+      refreshToken.value = null
+      user.value = null
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+
+      // Determinar mensaje de error específico
+      let errorMessage = 'Error al iniciar sesión'
+
+      if (error.response) {
+        // El servidor respondió con un código de error
+        const status = error.response.status
+        const data = error.response.data
+
+        if (status === 401) {
+          errorMessage = 'Usuario o contraseña incorrectos'
+        } else if (status === 400) {
+          errorMessage = data.detail || 'Datos de login inválidos'
+        } else if (status === 500) {
+          errorMessage = 'Error del servidor. Intenta nuevamente más tarde'
+        } else {
+          errorMessage = data.detail || `Error ${status}: ${error.response.statusText}`
+        }
+      } else if (error.request) {
+        // La petición fue hecha pero no hubo respuesta
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet'
+      } else {
+        // Error al configurar la petición
+        errorMessage = error.message || 'Error inesperado al iniciar sesión'
+      }
+
+      return {
+        success: false,
+        message: errorMessage
       }
     }
   }
   
   /**
-   * Obtiene la información del usuario autenticado
+   * Obtiene la información del usuario autenticado desde el backend
+   *
+   * CRÍTICO: Este método debe llamarse INMEDIATAMENTE después de obtener los tokens JWT
+   * para obtener el rol del usuario y sus permisos.
+   *
+   * Endpoint: GET /api/usuarios/me/
+   *
+   * Respuesta esperada:
+   * {
+   *   "id": 1,
+   *   "username": "admin",
+   *   "email": "admin@hospital.com",
+   *   "nombre_completo": "Administrador del Sistema",
+   *   "rol": {
+   *     "id_rol": 1,
+   *     "nombre_rol": "Administrador",
+   *     "descripcion": "Acceso total al sistema"
+   *   },
+   *   "is_active": true,
+   *   "is_staff": true,
+   *   "date_joined": "2025-01-15T10:30:00Z",
+   *   "last_login": "2025-01-20T14:45:00Z"
+   * }
+   *
+   * @throws {Error} Si el endpoint falla o el usuario no tiene rol asignado
    */
   async function fetchUserInfo() {
     try {
-      // Asumiendo que existe un endpoint /api/usuarios/me/ o similar
-      // Si no existe, deberás decodificar el JWT o crear el endpoint
+      console.log('📡 [Auth] Obteniendo información del usuario desde /api/usuarios/me/')
+
       const response = await apiClient.get('/api/usuarios/me/')
+
+      console.log('✅ [Auth] Información del usuario recibida:', response.data)
+
+      // Validar que el usuario tenga un rol asignado (CRÍTICO para RBAC)
+      if (!response.data.rol || !response.data.rol.nombre_rol) {
+        throw new Error('El usuario no tiene un rol asignado. Contacta al administrador.')
+      }
+
+      // Guardar usuario en state y localStorage
       user.value = response.data
       localStorage.setItem('user', JSON.stringify(response.data))
+
+      console.log('💾 [Auth] Usuario guardado en localStorage')
+
     } catch (error) {
-      console.error('Error al obtener información del usuario:', error)
+      console.error('❌ [Auth] Error al obtener información del usuario:', error)
+
+      // Limpiar tokens si falla la obtención del usuario
+      token.value = null
+      refreshToken.value = null
+      user.value = null
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+
+      // Re-lanzar el error para que login() lo maneje
+      throw new Error(
+        error.response?.data?.detail ||
+        'No se pudo obtener la información del usuario. Intenta nuevamente.'
+      )
     }
   }
   
