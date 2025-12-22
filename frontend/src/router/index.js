@@ -243,6 +243,14 @@ const router = createRouter({
           }
         },
         {
+          path: 'scan',
+          name: 'jefe-scan',
+          component: () => import('../views/jefe/ScannerView.vue'),
+          meta: {
+            title: 'Escanear - Jefe de Departamento'
+          }
+        },
+        {
           path: 'reportes',
           name: 'jefe-reportes',
           component: () => import('../views/jefe/ReportesView.vue'),

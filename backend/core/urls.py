@@ -33,7 +33,8 @@ from .views import (
     EstadoActivoViewSet,
     ActivoViewSet,
     HistorialMovimientoViewSet,
-    AuditoriaLogViewSet
+    AuditoriaLogViewSet,
+    DashboardStatsView
 )
 
 # ==============================================================================
@@ -77,6 +78,9 @@ router.register(r'auditoria-logs', AuditoriaLogViewSet, basename='auditorialog')
 
 urlpatterns = [
     path('', include(router.urls)),
+
+    # Endpoint de estadísticas para Dashboard Jefe de Departamento
+    path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
 ]
 
 # ==============================================================================

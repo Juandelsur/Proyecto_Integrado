@@ -1,15 +1,31 @@
 <template>
   <div class="jefe-home-content">
     <!-- ====================================================================
-         1. TARJETA DE BIENVENIDA
+         INDICADOR DE CARGA
          ==================================================================== -->
-    <v-card variant="tonal" color="primary" class="mb-4">
-      <v-card-text>
-        <h2 class="text-h5 font-weight-bold mb-1">Bienvenido, {{ userName }}</h2>
-        <p class="text-subtitle-1 mb-0">{{ fechaActual }}</p>
-        <p class="text-caption mt-1">Jefe de Departamento - Dashboard Ejecutivo</p>
-      </v-card-text>
-    </v-card>
+    <div v-if="loading" class="text-center py-8">
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        size="64"
+      ></v-progress-circular>
+      <p class="text-h6 mt-4">Cargando estadísticas...</p>
+    </div>
+
+    <!-- ====================================================================
+         CONTENIDO PRINCIPAL (Solo se muestra cuando NO está cargando)
+         ==================================================================== -->
+    <div v-else>
+      <!-- ====================================================================
+           1. TARJETA DE BIENVENIDA
+           ==================================================================== -->
+      <v-card variant="tonal" color="primary" class="mb-4">
+        <v-card-text>
+          <h2 class="text-h5 font-weight-bold mb-1">Bienvenido, {{ userName }}</h2>
+          <p class="text-subtitle-1 mb-0">{{ fechaActual }}</p>
+          <p class="text-caption mt-1">Jefe de Departamento - Dashboard Ejecutivo</p>
+        </v-card-text>
+      </v-card>
 
     <!-- ====================================================================
          2. KPIs SUPERIORES - 4 TARJETAS
@@ -69,56 +85,8 @@
         </v-card>
       </v-col>
     </v-row>
-
-    <!-- ====================================================================
-         4. BOTONES DE ACCIONES RÁPIDAS
-         ==================================================================== -->
-    <v-card elevation="2">
-      <v-card-title class="text-h6 font-weight-bold">
-        <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
-        Acciones Rápidas
-      </v-card-title>
-      <v-card-text>
-        <v-row>
-          <v-col cols="12" sm="4">
-            <v-btn
-              block
-              size="large"
-              color="primary"
-              variant="tonal"
-              prepend-icon="mdi-qrcode-scan"
-              @click="navigateTo('/tecnico/scan')"
-            >
-              Scanner QR
-            </v-btn>
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-btn
-              block
-              size="large"
-              color="success"
-              variant="tonal"
-              prepend-icon="mdi-printer"
-              @click="navigateTo('/jefe/imprimir-qr')"
-            >
-              Imprimir QR
-            </v-btn>
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-btn
-              block
-              size="large"
-              color="info"
-              variant="tonal"
-              prepend-icon="mdi-file-chart"
-              @click="navigateTo('/jefe/reportes')"
-            >
-              Ver Reportes
-            </v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
+    </div>
+    <!-- Fin del contenido principal -->
   </div>
 </template>
 
@@ -140,6 +108,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import apiClient from '@/services/api'
 import {
   Chart as ChartJS,
   Title,
@@ -164,64 +133,66 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // ============================================================================
-// STATE - DATOS MOCK PARA LOS GRÁFICOS
+// STATE - DATOS REALES DESDE LA API
 // ============================================================================
 
-// KPIs Superiores
+// Estado de carga
+const loading = ref(true)
+const error = ref(null)
+
+// KPIs Superiores (se llenarán con datos reales)
 const kpis = ref([
   {
     label: 'Total Activos',
-    value: 42,
+    value: 0,
     icon: 'mdi-desktop-classic',
     color: 'blue'
   },
   {
     label: 'Operativos',
-    value: 35,
+    value: 0,
     icon: 'mdi-check-circle',
     color: 'green'
   },
   {
     label: 'En Reparación',
-    value: 5,
+    value: 0,
     icon: 'mdi-wrench',
     color: 'amber'
   },
   {
     label: 'De Baja',
-    value: 2,
+    value: 0,
     icon: 'mdi-close-circle',
     color: 'red'
   }
 ])
 
-// Datos para el gráfico de barras (Activos por Departamento)
+// Datos para el gráfico de barras (Activos por Departamento) - Se llenarán con datos reales
 const barChartData = ref({
-  labels: ['UCI', 'Laboratorio', 'Radiología', 'Urgencias', 'Pediatría', 'Cirugía'],
+  labels: [],
   datasets: [
     {
       label: 'Cantidad de Activos',
-      data: [6, 5, 8, 4, 7, 12],
-      backgroundColor: [
-        'rgba(33, 150, 243, 0.7)',   // Azul
-        'rgba(76, 175, 80, 0.7)',    // Verde
-        'rgba(255, 152, 0, 0.7)',    // Naranja
-        'rgba(156, 39, 176, 0.7)',   // Púrpura
-        'rgba(244, 67, 54, 0.7)',    // Rojo
-        'rgba(0, 188, 212, 0.7)'     // Cyan
-      ],
-      borderColor: [
-        'rgba(33, 150, 243, 1)',
-        'rgba(76, 175, 80, 1)',
-        'rgba(255, 152, 0, 1)',
-        'rgba(156, 39, 176, 1)',
-        'rgba(244, 67, 54, 1)',
-        'rgba(0, 188, 212, 1)'
-      ],
+      data: [],
+      backgroundColor: [],
+      borderColor: [],
       borderWidth: 2
     }
   ]
 })
+
+// Paleta de colores para los gráficos
+const colorPalette = [
+  { bg: 'rgba(33, 150, 243, 0.7)', border: 'rgba(33, 150, 243, 1)' },    // Azul
+  { bg: 'rgba(76, 175, 80, 0.7)', border: 'rgba(76, 175, 80, 1)' },      // Verde
+  { bg: 'rgba(255, 152, 0, 0.7)', border: 'rgba(255, 152, 0, 1)' },      // Naranja
+  { bg: 'rgba(156, 39, 176, 0.7)', border: 'rgba(156, 39, 176, 1)' },    // Púrpura
+  { bg: 'rgba(244, 67, 54, 0.7)', border: 'rgba(244, 67, 54, 1)' },      // Rojo
+  { bg: 'rgba(0, 188, 212, 0.7)', border: 'rgba(0, 188, 212, 1)' },      // Cyan
+  { bg: 'rgba(255, 193, 7, 0.7)', border: 'rgba(255, 193, 7, 1)' },      // Amarillo
+  { bg: 'rgba(96, 125, 139, 0.7)', border: 'rgba(96, 125, 139, 1)' }     // Gris
+]
 
 const barChartOptions = ref({
   responsive: true,
@@ -244,29 +215,28 @@ const barChartOptions = ref({
   }
 })
 
-// Datos para el gráfico de dona (Estado de Salud)
+// Datos para el gráfico de dona (Estado de Salud) - Se llenarán con datos reales
 const doughnutChartData = ref({
-  labels: ['Operativos', 'En Reparación', 'En Bodega', 'De Baja'],
+  labels: [],
   datasets: [
     {
       label: 'Estado de Activos',
-      data: [35, 5, 0, 2],
-      backgroundColor: [
-        'rgba(76, 175, 80, 0.8)',    // Verde
-        'rgba(255, 193, 7, 0.8)',    // Amarillo
-        'rgba(33, 150, 243, 0.8)',   // Azul
-        'rgba(244, 67, 54, 0.8)'     // Rojo
-      ],
-      borderColor: [
-        'rgba(76, 175, 80, 1)',
-        'rgba(255, 193, 7, 1)',
-        'rgba(33, 150, 243, 1)',
-        'rgba(244, 67, 54, 1)'
-      ],
+      data: [],
+      backgroundColor: [],
+      borderColor: [],
       borderWidth: 2
     }
   ]
 })
+
+// Mapa de colores por estado
+const estadoColors = {
+  'Operativo': { bg: 'rgba(76, 175, 80, 0.8)', border: 'rgba(76, 175, 80, 1)' },
+  'En Reparación': { bg: 'rgba(255, 193, 7, 0.8)', border: 'rgba(255, 193, 7, 1)' },
+  'En Mantención': { bg: 'rgba(255, 152, 0, 0.8)', border: 'rgba(255, 152, 0, 1)' },
+  'En Bodega': { bg: 'rgba(33, 150, 243, 0.8)', border: 'rgba(33, 150, 243, 1)' },
+  'De Baja': { bg: 'rgba(244, 67, 54, 0.8)', border: 'rgba(244, 67, 54, 1)' }
+}
 
 const doughnutChartOptions = ref({
   responsive: true,
@@ -317,7 +287,90 @@ const fechaActual = computed(() => {
 })
 
 // ============================================================================
-// METHODS
+// METHODS - API
+// ============================================================================
+
+/**
+ * Carga las estadísticas del dashboard desde la API
+ */
+async function fetchDashboardData() {
+  loading.value = true
+  error.value = null
+
+  try {
+    console.log('📊 Cargando estadísticas del dashboard...')
+
+    const response = await apiClient.get('/api/dashboard/stats/')
+    const data = response.data
+
+    console.log('✅ Estadísticas recibidas:', data)
+
+    // ================================================================
+    // 1. ACTUALIZAR KPIs
+    // ================================================================
+    kpis.value[0].value = data.kpis.total
+    kpis.value[1].value = data.kpis.operativos
+    kpis.value[2].value = data.kpis.en_reparacion
+    kpis.value[3].value = data.kpis.de_baja
+
+    // ================================================================
+    // 2. ACTUALIZAR GRÁFICO DE BARRAS (Activos por Departamento)
+    // ================================================================
+    if (data.activos_por_departamento && data.activos_por_departamento.length > 0) {
+      barChartData.value.labels = data.activos_por_departamento.map(item => item.departamento)
+      barChartData.value.datasets[0].data = data.activos_por_departamento.map(item => item.cantidad)
+
+      // Asignar colores dinámicamente
+      const backgroundColors = []
+      const borderColors = []
+
+      data.activos_por_departamento.forEach((_, index) => {
+        const colorIndex = index % colorPalette.length
+        backgroundColors.push(colorPalette[colorIndex].bg)
+        borderColors.push(colorPalette[colorIndex].border)
+      })
+
+      barChartData.value.datasets[0].backgroundColor = backgroundColors
+      barChartData.value.datasets[0].borderColor = borderColors
+    }
+
+    // ================================================================
+    // 3. ACTUALIZAR GRÁFICO DE DONA (Estado de Salud)
+    // ================================================================
+    if (data.estado_salud && data.estado_salud.length > 0) {
+      doughnutChartData.value.labels = data.estado_salud.map(item => item.estado)
+      doughnutChartData.value.datasets[0].data = data.estado_salud.map(item => item.cantidad)
+
+      // Asignar colores según el estado
+      const backgroundColors = []
+      const borderColors = []
+
+      data.estado_salud.forEach(item => {
+        const colors = estadoColors[item.estado] || {
+          bg: 'rgba(158, 158, 158, 0.8)',
+          border: 'rgba(158, 158, 158, 1)'
+        }
+        backgroundColors.push(colors.bg)
+        borderColors.push(colors.border)
+      })
+
+      doughnutChartData.value.datasets[0].backgroundColor = backgroundColors
+      doughnutChartData.value.datasets[0].borderColor = borderColors
+    }
+
+  } catch (err) {
+    console.error('❌ Error al cargar estadísticas:', err)
+    error.value = 'No se pudieron cargar las estadísticas. Verifica tu conexión.'
+
+    // Mostrar alerta al usuario
+    alert('Error al cargar las estadísticas del dashboard. Por favor, recarga la página.')
+  } finally {
+    loading.value = false
+  }
+}
+
+// ============================================================================
+// METHODS - NAVEGACIÓN
 // ============================================================================
 
 /**
@@ -332,13 +385,11 @@ function navigateTo(path) {
 // ============================================================================
 
 /**
- * Al montar el componente, se pueden cargar datos reales desde la API
- * Por ahora usamos datos mock
+ * Al montar el componente, cargar datos reales desde la API
  */
-onMounted(() => {
-  console.log('Dashboard Jefe de Departamento cargado')
-  // TODO: Aquí se pueden cargar datos reales desde la API
-  // await fetchDashboardData()
+onMounted(async () => {
+  console.log('🚀 Dashboard Jefe de Departamento - Iniciando carga de datos...')
+  await fetchDashboardData()
 })
 
 

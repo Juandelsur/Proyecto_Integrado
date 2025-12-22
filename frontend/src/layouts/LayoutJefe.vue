@@ -36,14 +36,14 @@
         <span>Inicio</span>
       </v-btn>
 
+      <v-btn value="scan" @click="navigateTo('/jefe/scan')">
+        <v-icon>mdi-qrcode-scan</v-icon>
+        <span>Escanear</span>
+      </v-btn>
+
       <v-btn value="reportes" @click="navigateTo('/jefe/reportes')">
         <v-icon>mdi-file-chart</v-icon>
         <span>Reportes</span>
-      </v-btn>
-
-      <v-btn value="imprimir" @click="navigateTo('/jefe/imprimir-qr')">
-        <v-icon>mdi-printer</v-icon>
-        <span>Imprimir</span>
       </v-btn>
     </v-bottom-navigation>
   </v-app>
@@ -73,8 +73,8 @@ watch(
   () => route.path,
   (newPath) => {
     if (newPath.includes('/jefe/home')) activeTab.value = 'home'
+    else if (newPath.includes('/jefe/scan')) activeTab.value = 'scan'
     else if (newPath.includes('/jefe/reportes')) activeTab.value = 'reportes'
-    else if (newPath.includes('/jefe/imprimir')) activeTab.value = 'imprimir'
   },
   { immediate: true }
 )

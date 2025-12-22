@@ -22,9 +22,11 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 from django.db import transaction
 from django.core.exceptions import ValidationError
+from django.db.models import Count
 from django_filters.rest_framework import DjangoFilterBackend
 
 # Importar permisos personalizados RBAC
@@ -261,7 +263,7 @@ class UbicacionViewSet(viewsets.ModelViewSet):
         else:
             # Para todo lo demás (POST, PUT, DELETE), necesitas ser Admin
             permission_classes = [IsAdminUser]
-        
+
         return [permission() for permission in permission_classes]
 
     # FILTROS Y BÚSQUEDA
@@ -848,3 +850,185 @@ class AuditoriaLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     # RBAC: Solo Administradores y Jefes pueden consultar auditoría
     permission_classes = [IsAuthenticated, IsJefeOrAdminReadOnly]
+
+
+# ==============================================================================
+# VISTA DE ESTADÍSTICAS PARA DASHBOARD JEFE DE DEPARTAMENTO
+# ==============================================================================
+
+@extend_schema(
+    summary="Obtener estadísticas del dashboard",
+    description="""
+    Endpoint para obtener estadísticas agregadas del sistema para el Dashboard del Jefe de Departamento.
+
+    Retorna:
+    - KPIs: Conteos totales de activos por estado (Total, Operativos, En Reparación, De Baja)
+    - Activos por Departamento: Agrupación de activos por departamento
+    - Estado de Salud: Distribución de activos por estado
+
+    Permisos: Requiere autenticación. Accesible para todos los roles.
+    """,
+    tags=["Dashboard"],
+    responses={
+        200: OpenApiResponse(
+            description="Estadísticas obtenidas exitosamente",
+            response={
+                "type": "object",
+                "properties": {
+                    "kpis": {
+                        "type": "object",
+                        "properties": {
+                            "total": {"type": "integer"},
+                            "operativos": {"type": "integer"},
+                            "en_reparacion": {"type": "integer"},
+                            "de_baja": {"type": "integer"}
+                        }
+                    },
+                    "activos_por_departamento": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "departamento": {"type": "string"},
+                                "cantidad": {"type": "integer"}
+                            }
+                        }
+                    },
+                    "estado_salud": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "estado": {"type": "string"},
+                                "cantidad": {"type": "integer"}
+                            }
+                        }
+                    }
+                }
+            }
+        )
+    }
+)
+class DashboardStatsView(APIView):
+    """
+    Vista para obtener estadísticas agregadas del sistema.
+
+    Endpoint: GET /api/dashboard/stats/
+
+    Retorna datos reales desde la base de datos para:
+    - KPIs superiores (Total, Operativos, En Reparación, De Baja)
+    - Gráfico de barras: Activos por Departamento
+    - Gráfico de dona: Estado de Salud de Activos
+
+    SEGURIDAD:
+    - Requiere autenticación JWT
+    - Accesible para todos los roles (Admin, Técnico, Jefe)
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Obtiene estadísticas agregadas del sistema.
+
+        Returns:
+            Response: JSON con KPIs, activos por departamento y estado de salud
+        """
+        try:
+            # ================================================================
+            # 1. KPIs SUPERIORES
+            # ================================================================
+
+            # Total de activos
+            total_activos = Activo.objects.count()
+
+            # Activos operativos
+            operativos = Activo.objects.filter(
+                estado__nombre_estado__iexact='Operativo'
+            ).count()
+
+            # Activos en reparación (puede ser "En Reparación", "En Mantención", etc.)
+            en_reparacion = Activo.objects.filter(
+                estado__nombre_estado__icontains='Reparación'
+            ).count() + Activo.objects.filter(
+                estado__nombre_estado__icontains='Mantención'
+            ).count()
+
+            # Activos de baja
+            de_baja = Activo.objects.filter(
+                estado__nombre_estado__iexact='De Baja'
+            ).count()
+
+            kpis = {
+                'total': total_activos,
+                'operativos': operativos,
+                'en_reparacion': en_reparacion,
+                'de_baja': de_baja
+            }
+
+            # ================================================================
+            # 2. ACTIVOS POR DEPARTAMENTO (Para gráfico de barras)
+            # ================================================================
+
+            activos_por_depto = Activo.objects.select_related(
+                'ubicacion_actual__departamento'
+            ).values(
+                'ubicacion_actual__departamento__nombre_departamento'
+            ).annotate(
+                cantidad=Count('id')
+            ).order_by('-cantidad')
+
+            # Formatear datos para el frontend
+            activos_por_departamento = [
+                {
+                    'departamento': item['ubicacion_actual__departamento__nombre_departamento'] or 'Sin Departamento',
+                    'cantidad': item['cantidad']
+                }
+                for item in activos_por_depto
+            ]
+
+            # ================================================================
+            # 3. ESTADO DE SALUD (Para gráfico de dona)
+            # ================================================================
+
+            estado_salud_query = Activo.objects.select_related(
+                'estado'
+            ).values(
+                'estado__nombre_estado'
+            ).annotate(
+                cantidad=Count('id')
+            ).order_by('-cantidad')
+
+            # Formatear datos para el frontend
+            estado_salud = [
+                {
+                    'estado': item['estado__nombre_estado'] or 'Sin Estado',
+                    'cantidad': item['cantidad']
+                }
+                for item in estado_salud_query
+            ]
+
+            # ================================================================
+            # 4. RESPUESTA FINAL
+            # ================================================================
+
+            response_data = {
+                'kpis': kpis,
+                'activos_por_departamento': activos_por_departamento,
+                'estado_salud': estado_salud
+            }
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # Log del error para debugging
+            print(f"❌ Error en DashboardStatsView: {str(e)}")
+
+            return Response(
+                {
+                    'error': 'Error al obtener estadísticas',
+                    'detail': str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
