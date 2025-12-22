@@ -2,13 +2,13 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 // ============================================================================
-// IMPORTAR LAYOUT
+// IMPORTAR LAYOUTS
 // ============================================================================
 
 import AppLayout from '@/layouts/AppLayout.vue'
 
 // ============================================================================
-// IMPORTAR VISTAS
+// IMPORTAR VISTAS EXISTENTES (TU ARQUITECTURA LIMPIA)
 // ============================================================================
 
 // Vistas Públicas
@@ -31,7 +31,7 @@ import AdminOtros from '@/views/admin/OtrosView.vue'
 import JefeOtros from '@/views/jefe/OtrosView.vue'
 
 // ============================================================================
-// CONFIGURACIÓN DE RUTAS CON RBAC
+// CONFIGURACIÓN DE RUTAS CON RBAC + RUTAS NUEVAS INTEGRADAS
 // ============================================================================
 
 const router = createRouter({
@@ -52,12 +52,16 @@ const router = createRouter({
     },
 
     // ========================================================================
-    // RUTAS PROTEGIDAS CON LAYOUT (RBAC)
+    // RUTA RAÍZ - REDIRIGE AL LOGIN
     // ========================================================================
-    
-    // ------------------------------------------------------------------
-    // ADMINISTRADOR - Rutas con AppLayout
-    // ------------------------------------------------------------------
+    {
+      path: '/',
+      redirect: '/login'
+    },
+
+    // ========================================================================
+    // RUTAS PROTEGIDAS - ADMINISTRADOR (CON APPLAYOUT)
+    // ========================================================================
     {
       path: '/admin',
       component: AppLayout,
@@ -66,6 +70,9 @@ const router = createRouter({
         requiredRole: 'Administrador'
       },
       children: [
+        // ──────────────────────────────────────────────────────────────────
+        // RUTAS EXISTENTES (TU ARQUITECTURA LIMPIA)
+        // ──────────────────────────────────────────────────────────────────
         {
           path: '',
           name: 'AdminHome',
@@ -89,13 +96,113 @@ const router = createRouter({
           meta: {
             title: 'Otras Opciones',
           }
-        }
+        },
+
+        // ──────────────────────────────────────────────────────────────────
+        // RUTAS NUEVAS - INTEGRADAS DEL ROUTER DE TU AMIGO
+        // ──────────────────────────────────────────────────────────────────
+
+        // Gestión de Activos
+        {
+          path: 'activos',
+          name: 'admin-activos',
+          component: () => import('@/views/admin/gestion/GestionActivos.vue'),
+          meta: {
+            title: 'Gestión de Activos',
+          }
+        },
+        {
+          path: 'estado-activos',
+          name: 'admin-estado-activos',
+          component: () => import('@/views/admin/gestion/GestionEstadoActivo.vue'),
+          meta: {
+            title: 'Gestión de Estados de Activos',
+          }
+        },
+
+        // Gestión de Catálogos
+        {
+          path: 'departamentos',
+          name: 'admin-departamentos',
+          component: () => import('@/views/admin/gestion/GestionDepartamentos.vue'),
+          meta: {
+            title: 'Gestión de Departamentos',
+          }
+        },
+        {
+          path: 'roles',
+          name: 'admin-roles',
+          component: () => import('@/views/admin/gestion/GestionRoles.vue'),
+          meta: {
+            title: 'Gestión de Roles',
+          }
+        },
+        {
+          path: 'tipos-equipo',
+          name: 'admin-tipos-equipo',
+          component: () => import('@/views/admin/gestion/GestionTipoEquipo.vue'),
+          meta: {
+            title: 'Gestión de Tipos de Equipo',
+          }
+        },
+        {
+          path: 'ubicaciones',
+          name: 'admin-ubicaciones',
+          component: () => import('@/views/admin/gestion/GestionUbicaciones.vue'),
+          meta: {
+            title: 'Gestión de Ubicaciones',
+          }
+        },
+        {
+          path: 'usuarios',
+          name: 'admin-usuarios',
+          component: () => import('@/views/admin/gestion/GestionUsuarios.vue'),
+          meta: {
+            title: 'Gestión de Usuarios',
+          }
+        },
+
+        // Reportes y Auditoría
+        {
+          path: 'historial',
+          name: 'admin-historial',
+          component: () => import('@/views/admin/HistorialView.vue'),
+          meta: {
+            title: 'Historial de Movimientos',
+          }
+        },
+        {
+          path: 'reportes',
+          name: 'admin-reportes',
+          component: () => import('@/views/admin/ReportesView.vue'),
+          meta: {
+            title: 'Reportes',
+          }
+        },
+        {
+          path: 'auditoria',
+          name: 'admin-auditoria',
+          component: () => import('@/views/admin/AuditoriaView.vue'),
+          meta: {
+            title: 'Auditoría del Sistema',
+          }
+        },
+
+        // Impresión de QR
+        {
+          path: 'imprimir-qr',
+          name: 'admin-imprimir-qr',
+          component: () => import('@/views/ImprimirQrView.vue'),
+          meta: {
+            title: 'Imprimir Códigos QR',
+          }
+        },
       ]
     },
 
-    // ------------------------------------------------------------------
-    // TÉCNICO - Rutas con AppLayout
-    // ------------------------------------------------------------------
+    // ========================================================================
+    // RUTAS PROTEGIDAS - TÉCNICO (CON APPLAYOUT)
+    // ========================================================================
     {
       path: '/tecnico',
       component: AppLayout,
@@ -104,6 +211,9 @@ const router = createRouter({
         requiredRole: 'Técnico'
       },
       children: [
+        // ──────────────────────────────────────────────────────────────────
+        // RUTAS EXISTENTES (TU ARQUITECTURA LIMPIA)
+        // ──────────────────────────────────────────────────────────────────
         {
           path: '',
           name: 'TecnicoHome',
@@ -127,13 +237,73 @@ const router = createRouter({
           meta: {
             title: 'Otras Opciones',
           }
-        }
+        },
+
+        // ──────────────────────────────────────────────────────────────────
+        // RUTAS NUEVAS - INTEGRADAS DEL ROUTER DE TU AMIGO
+        // ──────────────────────────────────────────────────────────────────
+
+        // Escanear QR
+        {
+          path: 'scan',
+          name: 'technician-scan',
+          component: () => import('@/views/technician/ScannerView.vue'),
+          meta: {
+            title: 'Escanear QR',
+          }
+        },
+
+        // Impresión de Etiquetas
+        {
+          path: 'imprimir',
+          name: 'technician-print',
+          component: () => import('@/views/technician/PrintLabelsView.vue'),
+          meta: {
+            title: 'Imprimir Etiquetas',
+          }
+        },
+
+        // Gestión de Activos (Técnico)
+        {
+          path: 'crear',
+          name: 'technician-create',
+          component: () => import('@/views/technician/CreateAssetView.vue'),
+          meta: {
+            title: 'Crear Activo',
+          }
+        },
+        {
+          path: 'editar-buscar',
+          name: 'technician-edit-search',
+          component: () => import('@/views/technician/EditAssetSearchView.vue'),
+          meta: {
+            title: 'Editar Activos',
+          }
+        },
+
+        // Sub-rutas de Activos
+        {
+          path: 'activos/crear',
+          name: 'technician-crear-activo',
+          component: () => import('@/views/technician/activos/CrearActivoView.vue'),
+          meta: {
+            title: 'Crear Activo - Técnico',
+          }
+        },
+        {
+          path: 'activos/editar',
+          name: 'technician-edit-activo',
+          component: () => import('@/views/technician/activos/EditarActivoView.vue'),
+          meta: {
+            title: 'Editar Activo - Técnico',
+          }
+        },
       ]
     },
 
-    // ------------------------------------------------------------------
-    // JEFE DE DEPARTAMENTO - Rutas con AppLayout
-    // ------------------------------------------------------------------
+    // ========================================================================
+    // RUTAS PROTEGIDAS - JEFE DE DEPARTAMENTO (CON APPLAYOUT)
+    // ========================================================================
     {
       path: '/jefe',
       component: AppLayout,
@@ -162,11 +332,113 @@ const router = createRouter({
     },
 
     // ========================================================================
-    // RUTA POR DEFECTO - REDIRIGE AL LOGIN
+    // RUTAS COMPARTIDAS - INVENTARIO Y ACTIVOS (ADMIN/TÉCNICO)
     // ========================================================================
     {
-      path: '/',
-      redirect: '/login'
+      path: '/inventario',
+      name: 'asset-list',
+      component: () => import('@/views/admin/AssetListView.vue'),
+      meta: {
+        title: 'Inventario de Activos',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/activos/:id',
+      name: 'asset-detail',
+      component: () => import('@/views/admin/AssetDetailView.vue'),
+      meta: {
+        title: 'Detalle de Activo',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/activos/:id/editar',
+      name: 'asset-edit',
+      component: () => import('@/views/AssetEditView.vue'),
+      meta: {
+        title: 'Editar Activo',
+        requiresAuth: true,
+      }
+    },
+    {
+      path: '/activos/nuevo',
+      name: 'asset-create',
+      component: () => import('@/views/AssetCreateView.vue'),
+      meta: {
+        title: 'Crear Activo',
+        requiresAuth: true,
+      }
+    },
+    {
+      path: '/activos/:id/movilizar',
+      name: 'asset-move',
+      component: () => import('@/views/AssetMoveView.vue'),
+      meta: {
+        title: 'Movilizar Activo',
+        requiresAuth: true,
+      }
+    },
+
+    // ========================================================================
+    // RUTAS DE IMPRESIÓN
+    // ========================================================================
+    {
+      path: '/imprimir-etiquetas',
+      name: 'print-qrs',
+      component: () => import('@/views/admin/PrintQRsView.vue'),
+      meta: {
+        title: 'Imprimir Etiquetas QR',
+        requiresAuth: true,
+      }
+    },
+
+    // ========================================================================
+    // RUTAS DE FLUJO - CONFIRMACIÓN Y ÉXITO
+    // ========================================================================
+    {
+      path: '/confirmar-equipo/:id',
+      name: 'confirm-asset',
+      component: () => import('@/views/technician/MovimientoTecnicoView.vue'),
+      meta: {
+        title: 'Confirmar Equipo',
+        requiresAuth: true
+      }
+    },
+    {
+      path: '/registro-exitoso',
+      name: 'movement-success',
+      component: () => import('@/views/technician/MovementSuccessView.vue'),
+      meta: {
+        title: 'Registro Exitoso',
+        requiresAuth: true
+      }
+    },
+
+    // ========================================================================
+    // RUTAS DE CONFIGURACIÓN
+    // ========================================================================
+    {
+      path: '/configuracion',
+      name: 'settings',
+      component: () => import('@/views/technician/SettingsView.vue'),
+      meta: {
+        title: 'Configuración',
+        requiresAuth: true
+      }
+    },
+
+    // ========================================================================
+    // RUTAS DE DESARROLLO/TESTING (OPCIONAL - COMENTAR EN PRODUCCIÓN)
+    // ========================================================================
+    {
+      path: '/qr-scanner-demo',
+      name: 'qr-scanner-demo',
+      component: () => import('@/views/technician/QRScannerDemoView.vue'),
+      meta: {
+        title: 'QR Scanner Demo',
+        requiresAuth: false // Sin auth para pruebas
+      }
     },
 
     // ========================================================================
@@ -180,14 +452,14 @@ const router = createRouter({
 })
 
 // ============================================================================
-// NAVIGATION GUARDS - PROTECCIÓN DE RUTAS CON RBAC
+// NAVIGATION GUARDS - PROTECCIÓN DE RUTAS CON RBAC (TU LÓGICA LIMPIA)
 // ============================================================================
 
 router.beforeEach((to, from, next) => {
   // Actualizar el título de la página
   document.title = to.meta.title ? `${to.meta.title} - SCA Hospital` : 'SCA Hospital'
 
-  // ✅ CABLE REPARADO: Obtener el store de autenticación
+  // Obtener el store de autenticación
   const authStore = useAuthStore()
 
   console.log('🔍 Router Guard - Navegando a:', to.path)
@@ -270,3 +542,4 @@ router.beforeEach((to, from, next) => {
 // ============================================================================
 
 export default router
+
